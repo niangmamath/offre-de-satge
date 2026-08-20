@@ -2,41 +2,23 @@ import { connection } from "next/server";
 import { getDerniereMaj, getOffres, type Offre } from "@/lib/db";
 import OffresExplorer from "@/components/OffresExplorer";
 
-function JobPostingJsonLd({ offres }: { offres: Offre[] }) {
-  const items = offres.slice(0, 30).map((o) => ({
+// Liste simple, pas de JobPosting ici : Google recommande UN JobPosting sur
+// la page dédiée à CETTE offre (cf. app/offre/[slug]/page.tsx), pas groupés
+// sur une page de listing — sinon Google Jobs les ignore ou les pénalise.
+function ItemListJsonLd({ offres }: { offres: Offre[] }) {
+  const json = {
     "@context": "https://schema.org",
-    "@type": "JobPosting",
-    title: o.poste,
-    description: o.description || o.poste,
-    datePosted: o.date_pub_iso || undefined,
-    employmentType: "INTERN",
-    hiringOrganization: {
-      "@type": "Organization",
-      name: o.entite || "Non précisé",
-    },
-    jobLocation: {
-      "@type": "Place",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: o.ville || "Maroc",
-        addressCountry: "MA",
-      },
-    },
-    directApply: true,
-    url: o.url,
-  }));
-
+    "@type": "ItemList",
+    itemListElement: offres.slice(0, 50).map((o, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `/offre/${o.slug}`,
+      name: o.poste,
+    })),
+  };
   return (
-    <>
-      {items.map((item, i) => (
-        // eslint-disable-next-line react/no-danger
-        <script
-          key={i}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }}
-        />
-      ))}
-    </>
+    // eslint-disable-next-line react/no-danger
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(json) }} />
   );
 }
 
@@ -49,7 +31,7 @@ export default async function Home() {
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
-      {offres && offres.length > 0 ? <JobPostingJsonLd offres={offres} /> : null}
+      {offres && offres.length > 0 ? <ItemListJsonLd offres={offres} /> : null}
 
       {offres === null ? (
         <>

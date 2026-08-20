@@ -2,6 +2,7 @@ import { Pool } from "pg";
 
 export type Offre = {
   url: string;
+  slug: string;
   poste: string;
   entite: string | null;
   ville: string | null;
@@ -52,7 +53,7 @@ export async function getOffres(): Promise<Offre[] | null> {
   const pool = getPool();
   if (!pool) return null;
   const { rows } = await pool.query<Offre>(
-    `SELECT url, poste, entite, ville, description, domaine, type_stage,
+    `SELECT url, slug, poste, entite, ville, description, domaine, type_stage,
             duree, source, date_pub_iso, age_jours, fenetre, candidats,
             premiere_detection, derniere_verification
      FROM offres
@@ -68,6 +69,21 @@ export async function getOffres(): Promise<Offre[] | null> {
        age_jours ASC NULLS LAST`
   );
   return rows;
+}
+
+/** Une offre par son slug (page de détail), ou null si absente/base non
+ * configurée — la page appelante distingue les deux via getPool(). */
+export async function getOffreBySlug(slug: string): Promise<Offre | null> {
+  const pool = getPool();
+  if (!pool) return null;
+  const { rows } = await pool.query<Offre>(
+    `SELECT url, slug, poste, entite, ville, description, domaine, type_stage,
+            duree, source, date_pub_iso, age_jours, fenetre, candidats,
+            premiere_detection, derniere_verification
+     FROM offres WHERE slug = $1 LIMIT 1`,
+    [slug]
+  );
+  return rows[0] ?? null;
 }
 
 export async function getDerniereMaj(): Promise<string | null> {

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Offre } from "@/lib/db";
 
 const FENETRE_STYLE: Record<string, { badge: string; accent: string }> = {
@@ -44,10 +45,8 @@ export default function OffreCard({ offre }: { offre: Offre }) {
   const icone = DOMAINE_ICON[offre.domaine ?? ""] ?? DOMAINE_ICON.Autre;
 
   return (
-    <a
-      href={offre.url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      href={`/offre/${offre.slug}`}
       className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-gray-200 bg-white p-4 pl-5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg"
     >
       <span className={`absolute inset-y-0 left-0 w-1.5 ${style.accent}`} aria-hidden />
@@ -108,6 +107,6 @@ export default function OffreCard({ offre }: { offre: Offre }) {
           Nouveau
         </span>
       ) : null}
-    </a>
+    </Link>
   );
 }

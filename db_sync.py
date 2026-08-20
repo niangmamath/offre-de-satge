@@ -13,6 +13,9 @@ REMPLACE l'état "offres actuellement convenables" : upsert de ce qui l'est
 encore, suppression de ce qui ne l'est plus.
 """
 import datetime as dt
+import hashlib
+import re
+import unicodedata
 
 TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS offres (
@@ -34,15 +37,26 @@ CREATE TABLE IF NOT EXISTS offres (
 )
 """
 
+# ALTER ... ADD COLUMN IF NOT EXISTS : migration additive idempotente, sans
+# outil de migration séparé (inutile à cette échelle) — sûr à rejouer à
+# chaque run, y compris sur une table déjà peuplée par une version
+# antérieure du schéma (cf. colonne "slug", ajoutée après le premier
+# déploiement pour les pages de détail par offre).
+MIGRATIONS_SQL = [
+    "ALTER TABLE offres ADD COLUMN IF NOT EXISTS slug TEXT",
+    "CREATE UNIQUE INDEX IF NOT EXISTS offres_slug_idx ON offres (slug)",
+]
+
 UPSERT_SQL = """
 INSERT INTO offres (
     url, poste, entite, ville, description, domaine, type_stage, duree,
-    source, date_pub_iso, age_jours, fenetre, candidats,
+    source, date_pub_iso, age_jours, fenetre, candidats, slug,
     premiere_detection, derniere_verification
 ) VALUES (
     %(url)s, %(poste)s, %(entite)s, %(ville)s, %(description)s, %(domaine)s,
     %(type_stage)s, %(duree)s, %(source)s, %(date_pub_iso)s, %(age_jours)s,
-    %(fenetre)s, %(candidats)s, %(premiere_detection)s, %(derniere_verification)s
+    %(fenetre)s, %(candidats)s, %(slug)s,
+    %(premiere_detection)s, %(derniere_verification)s
 )
 ON CONFLICT (url) DO UPDATE SET
     poste = EXCLUDED.poste, entite = EXCLUDED.entite, ville = EXCLUDED.ville,
@@ -52,10 +66,25 @@ ON CONFLICT (url) DO UPDATE SET
     age_jours = EXCLUDED.age_jours, fenetre = EXCLUDED.fenetre,
     candidats = EXCLUDED.candidats,
     derniere_verification = EXCLUDED.derniere_verification
-    -- premiere_detection volontairement absent de la clause UPDATE : ne
-    -- jamais réécrit après l'insertion initiale (même logique que
-    -- annonces_vues.json).
+    -- premiere_detection ET slug volontairement absents de la clause
+    -- UPDATE : premiere_detection ne doit jamais être réécrit après
+    -- l'insertion initiale (même logique que annonces_vues.json) ; le slug
+    -- (dérivé de l'URL, stable par construction) n'a pas de raison de
+    -- changer une fois posé, et ne JAMAIS le changer garantit qu'un lien
+    -- déjà partagé (mail, réseaux sociaux) reste valide.
 """
+
+
+def _slug(url, poste):
+    """Identifiant d'URL stable et lisible pour la page de détail d'une
+    offre : titre translittéré + suffixe déterministe (hash de l'URL
+    source) pour l'unicité. Ne dépend QUE de l'URL source -> stable d'un
+    run à l'autre même si le titre est légèrement reformulé entre-temps."""
+    base = unicodedata.normalize("NFKD", poste or "")
+    base = "".join(c for c in base if not unicodedata.combining(c))
+    base = re.sub(r"[^a-zA-Z0-9]+", "-", base).strip("-").lower()[:60]
+    suffixe = hashlib.sha1((url or "").encode("utf-8")).hexdigest()[:8]
+    return f"{base}-{suffixe}" if base else suffixe
 
 
 def _row(a):
@@ -75,6 +104,7 @@ def _row(a):
         "age_jours": a.get("age_jours"),
         "fenetre": a.get("fenetre", "INCONNUE"),
         "candidats": a.get("nb_candidats_int"),
+        "slug": _slug(a["url"], a.get("poste", "")),
         # Les dates d'affichage (dd/mm/YYYY HH:MM, cf. process()) sont
         # reparsées en datetime pour la colonne TIMESTAMPTZ ; à défaut on
         # retombe sur "maintenant" plutôt que de planter tout le run.
@@ -116,6 +146,8 @@ def sync(items, is_convenable, database_url=None):
         try:
             with conn.cursor() as cur:
                 cur.execute(TABLE_SQL)
+                for migration in MIGRATIONS_SQL:
+                    cur.execute(migration)
                 for a in convenables:
                     cur.execute(UPSERT_SQL, _row(a))
                 if urls_gardees:
