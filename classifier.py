@@ -282,6 +282,74 @@ def hors_maroc(poste, ville):
     return any(k in blob for k in GEO_HORS_MAROC_KW)
 
 
+# Normalisation du nom de ville — le champ brut LinkedIn/Rekrute est très
+# bruité en pratique (région entière, préfixe administratif, arabe, "et
+# périphérie"...) : constaté sur données réelles, ~26 chaînes distinctes
+# pour ~15 villes effectives (ex. "Casablanca, Casablanca-Settat, Maroc",
+# "Méchouar de Casablanca, ...", "الدار البيضاء سطات...", "Casablanca et
+# périphérie" — tout ça pour Casablanca). Sans normalisation, le filtre
+# "Ville" du site devient inutilisable (10+ variantes de la même ville).
+# Liste non exhaustive : le repli (premier segment, préfixes retirés)
+# couvre les villes absentes de la liste.
+VILLES_CONNUES = [
+    ("Casablanca", ["casablanca", "الدار البيضاء", "كازابلانكا"]),
+    ("Rabat", ["rabat", "الرباط"]),
+    ("Marrakech", ["marrakech", "مراكش"]),
+    ("Tanger", ["tanger", "طنجة"]),
+    ("Fès", ["fes", "fès", "فاس"]),
+    ("Agadir", ["agadir", "أكادير"]),
+    ("Meknès", ["meknes", "meknès", "مكناس"]),
+    ("Oujda", ["oujda", "وجدة"]),
+    ("Kénitra", ["kenitra", "kénitra", "القنيطرة"]),
+    ("Tétouan", ["tetouan", "tétouan", "تطوان"]),
+    ("Salé", ["sale", "salé", "سلا"]),
+    ("Témara", ["temara", "témara", "تمارة"]),
+    ("Mohammedia", ["mohammedia", "المحمدية"]),
+    ("El Jadida", ["el jadida", "الجديدة"]),
+    ("Béni Mellal", ["beni mellal", "béni mellal", "بني ملال"]),
+    ("Nador", ["nador", "الناظور"]),
+    ("Settat", ["settat", "سطات"]),
+    ("Berrechid", ["berrechid", "برشيد"]),
+    ("Khouribga", ["khouribga", "خريبكة"]),
+    ("Safi", ["safi", "آسفي"]),
+    ("Larache", ["larache", "العرائش"]),
+    ("Ben Guerir", ["ben guerir", "بن جرير"]),
+    ("Bouskoura", ["bouskoura", "بوسكورة"]),
+    ("Ait Melloul", ["ait melloul", "أيت ملول"]),
+    ("Oualidia", ["oualidia", "الوليدية"]),
+]
+_PREFIXES_ADMIN = ("préfecture de ", "prefecture de ", "province de ", "région de ", "region de ")
+
+
+def normalize_ville(ville):
+    """Ville canonique à partir d'un texte de localisation brut. Priorité au
+    PREMIER segment (avant la première virgule) — c'est en général la ville
+    précise, la suite étant la région/le pays. Repli sur tout le texte, puis
+    sur "Maroc (non précisé)" si rien n'est identifiable (cas réel : des
+    offres LinkedIn où l'employeur n'a saisi que le pays)."""
+    if not ville or not ville.strip():
+        return "Maroc (non précisé)"
+    v_full = strip_accents(ville).lower()
+    premier = ville.split(",")[0].strip()
+    premier_l = strip_accents(premier).lower()
+
+    for canon, variantes in VILLES_CONNUES:
+        if any(strip_accents(v).lower() in premier_l for v in variantes):
+            return canon
+    for canon, variantes in VILLES_CONNUES:
+        if any(strip_accents(v).lower() in v_full for v in variantes):
+            return canon
+
+    if "maroc" in v_full or "morocco" in v_full:
+        return "Maroc (non précisé)"
+
+    for prefixe in _PREFIXES_ADMIN:
+        if premier_l.startswith(prefixe):
+            premier = premier[len(prefixe):].strip()
+            break
+    return premier or "Maroc (non précisé)"
+
+
 # -------------------------------------------------------------------- DATES
 _REL_RE = re.compile(r"il y a\s+(\d+)\s*(jour|jours|semaine|semaines|"
                       r"mois|an|ans|heure|heures|minute|minutes)", re.I)
@@ -380,6 +448,9 @@ def classifier(annonce, today=None):
         "hors_maroc_flag": hm,
         "date_pub_iso": date_iso, "age_jours": age, "date_source": date_source,
         "nb_candidats_int": nb_cand, "fenetre": fen,
+        # Écrase le champ brut par la ville canonique (hors_maroc, lui, a
+        # déjà tranché sur le texte brut ci-dessus — plus de signal utile).
+        "ville": normalize_ville(ville),
     })
     verdict, motif = verdict_of(out)
     out["verdict"] = verdict

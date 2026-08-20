@@ -169,6 +169,54 @@ class TestGeographie(unittest.TestCase):
         self.assertFalse(C.hors_maroc("Stage", ""))
 
 
+class TestNormalizeVille(unittest.TestCase):
+    """Cas réels observés en base (145 offres réelles) : le champ brut
+    LinkedIn/Rekrute produit ~26 chaînes distinctes pour ~15 villes."""
+
+    def test_ville_simple(self):
+        self.assertEqual(C.normalize_ville("Casablanca"), "Casablanca")
+
+    def test_region_entiere(self):
+        self.assertEqual(
+            C.normalize_ville("Casablanca, Casablanca-Settat, Maroc"), "Casablanca")
+
+    def test_mechouar(self):
+        self.assertEqual(
+            C.normalize_ville("Méchouar de Casablanca, Casablanca-Settat, Maroc"),
+            "Casablanca")
+
+    def test_et_peripherie(self):
+        self.assertEqual(C.normalize_ville("Casablanca et périphérie"), "Casablanca")
+
+    def test_prefixe_prefecture(self):
+        self.assertEqual(
+            C.normalize_ville("Préfecture de Casablanca, Casablanca-Settat, Maroc"),
+            "Casablanca")
+
+    def test_arabe_casablanca(self):
+        self.assertEqual(
+            C.normalize_ville("الدار البيضاء سطات المشور الدار البيضاء المغرب"),
+            "Casablanca")
+
+    def test_arabe_kazablanka(self):
+        self.assertEqual(C.normalize_ville("منطقة كازابلانكا الحضرية"), "Casablanca")
+
+    def test_ville_secondaire_dans_une_region(self):
+        self.assertEqual(
+            C.normalize_ville("Bouskoura, Casablanca-Settat, Maroc"), "Bouskoura")
+
+    def test_pays_seul(self):
+        self.assertEqual(C.normalize_ville("Maroc"), "Maroc (non précisé)")
+
+    def test_vide(self):
+        self.assertEqual(C.normalize_ville(""), "Maroc (non précisé)")
+        self.assertEqual(C.normalize_ville(None), "Maroc (non précisé)")
+
+    def test_accent_insensible(self):
+        self.assertEqual(C.normalize_ville("Fes, Maroc"), "Fès")
+        self.assertEqual(C.normalize_ville("Meknes, Maroc"), "Meknès")
+
+
 class TestFenetre(unittest.TestCase):
     def test_nouveau(self):
         self.assertEqual(C.fenetre_from_age(3, False, ""), "NOUVEAU")
