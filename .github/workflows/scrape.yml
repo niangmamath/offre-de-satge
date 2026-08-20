@@ -22,11 +22,12 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # Pipeline plus léger que celui de sourcing-regie-banque (pas de
-    # similarité IA, pas de Playwright) — 60 min de marge, à ajuster après
-    # un premier run réel si besoin (cf. incident de timeout déjà rencontré
-    # sur l'autre projet : mieux vaut trop de marge que pas assez).
-    timeout-minutes: 60
+    # QUERIES est passee a ~63 requetes (couverture "tous domaines/tous
+    # postes") x 9 localisations x 2 pages (+ passe fraicheur) : estimation
+    # ~100-125 min pour le balayage LinkedIn seul. Marge large (dépôt public
+    # = minutes Actions illimitées) plutôt que de reproduire l'incident de
+    # timeout déjà rencontré sur sourcing-regie-banque.
+    timeout-minutes: 180
 
     steps:
       - name: Checkout du dépôt

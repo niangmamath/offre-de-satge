@@ -86,14 +86,49 @@ LOCATIONS = [
     "Fès, Maroc", "Agadir, Maroc", "Meknès, Maroc", "Oujda, Maroc", "Maroc",
 ]
 
-# Requêtes génériques "stage" — pas de déclinaison par métier, le domaine
-# n'est qu'un tag informatif posé par le classifieur, jamais un filtre de
-# recherche.
+# Requêtes couvrant un large éventail de domaines et d'intitulés de poste
+# (demande explicite : "tous les domaines et postes de stage possibles").
+# Le domaine reste un TAG informatif posé par classifier.tag_domaine, jamais
+# un filtre — cette liste sert seulement à élargir ce que la recherche
+# LinkedIn remonte ; une offre trouvée via "stage cybersécurité" mais tagué
+# "Informatique / Data" par le classifieur reste normale.
 QUERIES = [
+    # --- Générique ---------------------------------------------------------
     "stage", "stage PFE", "stage de fin d'études", "stage d'été",
-    "stage alternance", "alternance", "stagiaire", "internship Morocco",
-    "stage ingénieur", "stage informatique", "stage marketing",
-    "stage finance", "stage RH", "stage commercial",
+    "stage d'initiation", "stage alternance", "alternance", "stagiaire",
+    "internship Morocco",
+    # --- Informatique / Data ------------------------------------------------
+    "stage développeur", "stage développement web", "stage data analyst",
+    "stage data science", "stage intelligence artificielle",
+    "stage cybersécurité", "stage sécurité informatique",
+    "stage réseaux informatiques", "stage cloud", "stage DevOps",
+    "stage UX UI design", "stage systèmes d'information",
+    # --- Ingénierie / Industrie ----------------------------------------------
+    "stage ingénieur", "stage génie civil", "stage génie mécanique",
+    "stage génie électrique", "stage maintenance industrielle",
+    "stage qualité industrielle", "stage génie industriel",
+    "stage automatisme",
+    # --- Finance / Comptabilité ----------------------------------------------
+    "stage comptabilité", "stage audit", "stage finance",
+    "stage contrôle de gestion", "stage fiscalité", "stage trésorerie",
+    # --- Commerce / Marketing / Vente -----------------------------------------
+    "stage marketing", "stage marketing digital", "stage commercial",
+    "stage communication", "stage vente", "stage business development",
+    "stage chef de produit",
+    # --- RH --------------------------------------------------------------
+    "stage ressources humaines", "stage recrutement", "stage paie",
+    "stage formation",
+    # --- Juridique ----------------------------------------------------------
+    "stage juridique", "stage droit des affaires", "stage fiscaliste",
+    # --- Logistique / Transport / Achats --------------------------------------
+    "stage logistique", "stage supply chain", "stage achats",
+    "stage transport", "stage import export",
+    # --- Santé -------------------------------------------------------------
+    "stage pharmacie", "stage biomédical", "stage laboratoire",
+    # --- Architecture / BTP --------------------------------------------------
+    "stage architecture", "stage BTP", "stage urbanisme",
+    # --- Agroalimentaire / Environnement ---------------------------------------
+    "stage agroalimentaire", "stage environnement", "stage agronomie",
 ]
 
 WORKMODE = [
