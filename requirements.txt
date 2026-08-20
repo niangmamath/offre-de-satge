@@ -1,0 +1,8 @@
+requests
+beautifulsoup4
+lxml
+openpyxl
+
+# Synchronisation vers la base Postgres qui alimente le site web (optionnel :
+# le pipeline degrade proprement si absent, cf. db_sync.py)
+psycopg2-binary

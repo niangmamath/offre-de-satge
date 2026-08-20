@@ -1,0 +1,73 @@
+name: Scraping stages Maroc
+
+# IMPORTANT (mise en route) : le déclencheur automatique `schedule` est
+# VOLONTAIREMENT désactivé ci-dessous (commenté) tant que le secret
+# DATABASE_URL n'a pas été configuré sur CE dépôt (Settings → Secrets and
+# variables → Actions). Sans ça, un cron actif écrirait quand même l'Excel
+# mais jamais la base — le site resterait vide sans erreur visible. Une
+# fois le secret en place :
+#   1. Testez avec "Run workflow" (déclenchement manuel, actif dès
+#      maintenant) et vérifiez que ça se termine en vert ET que le site
+#      affiche les nouvelles offres.
+#   2. Décommentez les 2 lignes "schedule:" / "- cron:" ci-dessous.
+# L'heure du cron est en UTC : 06:00 UTC ≈ 07:00 heure Maroc en hiver,
+# 08:00 en été.
+on:
+  # schedule:
+  #   - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    # Pipeline plus léger que celui de sourcing-regie-banque (pas de
+    # similarité IA, pas de Playwright) — 60 min de marge, à ajuster après
+    # un premier run réel si besoin (cf. incident de timeout déjà rencontré
+    # sur l'autre projet : mieux vaut trop de marge que pas assez).
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Installer les dépendances Python
+        run: pip install -r requirements.txt
+
+      # Sans ce cache, CHAQUE run cloud repartirait de zéro et
+      # re-téléchargerait toutes les fiches LinkedIn déjà vues — c'est
+      # exactement ce qui a fait dépasser un timeout de 90 min sur
+      # sourcing-regie-banque. Pattern "restore + save toujours" : la clé de
+      # sauvegarde varie à chaque run (run_id), la restauration prend la
+      # plus récente correspondant au préfixe.
+      - name: Restaurer le cache de scraping (annonces déjà vues)
+        uses: actions/cache/restore@v4
+        with:
+          path: cache_stages_maroc.json
+          key: stages-maroc-scrape-cache-${{ github.run_id }}
+          restore-keys: |
+            stages-maroc-scrape-cache-
+
+      - name: "Run complet (scrape + classification + Excel + base de données)"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+        run: python stages_maroc.py
+
+      - name: Sauvegarder le cache de scraping (même si le run a échoué)
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: cache_stages_maroc.json
+          key: stages-maroc-scrape-cache-${{ github.run_id }}
+
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: echo "Le run a échoué — voir les logs de l'étape précédente pour le détail."

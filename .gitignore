@@ -1,0 +1,36 @@
+# Données scrapées / générées (contiennent potentiellement des données
+# personnelles de tiers — noms de contacts, etc.)
+*.xlsx
+*.xls
+cache_stages_maroc.json
+annonces_vues.json
+annonces_vues.json.*
+_DERNIERE_MAJ.txt
+
+# Sauvegardes & journaux
+_backup_*
+*.bak
+*.bak_*
+*.log
+logs/
+
+# Fichiers temporaires / de test
+_test_*
+tmp_*
+test_output*.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS / éditeurs
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Configuration locale
+.env
