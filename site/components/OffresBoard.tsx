@@ -43,14 +43,29 @@ export default function OffresBoard({ offres }: { offres: Offre[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
-        <input
-          type="search"
-          value={recherche}
-          onChange={(e) => setRecherche(e.target.value)}
-          placeholder="Rechercher un poste ou une entreprise…"
-          className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:min-w-[220px]"
-        />
+      <div className="sticky top-3 z-10 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white/95 p-4 shadow-sm backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative w-full flex-1 sm:min-w-[220px]">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 114 10.5a6.5 6.5 0 0113 0z"
+            />
+          </svg>
+          <input
+            type="search"
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder="Rechercher un poste ou une entreprise…"
+            className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
         <Select label="Domaine" value={domaine} onChange={setDomaine} options={domaines} />
         <Select label="Type de stage" value={typeStage} onChange={setTypeStage} options={typesStage} />
         <Select label="Ville" value={ville} onChange={setVille} options={villes} />
@@ -66,8 +81,9 @@ export default function OffresBoard({ offres }: { offres: Offre[] }) {
       </div>
 
       <p className="text-sm text-gray-500">
-        {filtrees.length} offre{filtrees.length !== 1 ? "s" : ""} affichée
-        {filtrees.length !== 1 ? "s" : ""} sur {offres.length}
+        <span className="font-semibold text-gray-700">{filtrees.length}</span> offre
+        {filtrees.length !== 1 ? "s" : ""} affichée{filtrees.length !== 1 ? "s" : ""} sur{" "}
+        {offres.length}
       </p>
 
       {filtrees.length === 0 ? (
