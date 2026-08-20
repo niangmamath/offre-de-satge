@@ -1,0 +1,60 @@
+name: Newsletter stages Maroc
+
+# IMPORTANT (mise en route) : le declencheur automatique `schedule` est
+# VOLONTAIREMENT desactive ci-dessous (commente) tant que les secrets
+# n'ont pas ete configures sur CE depot (Settings -> Secrets and variables
+# -> Actions) : DATABASE_URL, SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASS,
+# FROM_EMAIL, SITE_URL. Sans SITE_URL, les liens dans le digest pointeraient
+# vers "https://example.com". Une fois les secrets en place :
+#   1. Testez avec "Run workflow" (declenchement manuel, actif des
+#      maintenant) et verifiez la reception d'un mail de test.
+#   2. Decommentez les 2 lignes "schedule:" / "- cron:" ci-dessous pour
+#      activer l'envoi automatique tous les 2 jours.
+# L'heure du cron est en UTC : 08:00 UTC = 09:00 heure Maroc en hiver,
+# 10:00 en ete.
+on:
+  # schedule:
+  #   - cron: "0 8 */2 * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run (n'envoie aucun email, affiche juste ce qui serait envoye)"
+        type: boolean
+        default: false
+
+jobs:
+  newsletter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout du depot
+        uses: actions/checkout@v4
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Installer les dependances Python
+        run: pip install -r requirements.txt
+
+      - name: Envoyer le digest
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python newsletter.py --dry-run
+          else
+            python newsletter.py
+          fi

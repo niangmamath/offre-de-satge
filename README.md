@@ -142,6 +142,39 @@ fichier). Le cache de scraping (`cache_stages_maroc.json`) est conservé
 entre les runs via `actions/cache`, pour ne pas re-télécharger toutes les
 fiches LinkedIn à chaque exécution.
 
+## Newsletter (`newsletter.py` + `.github/workflows/newsletter.yml`)
+
+Digest par email tous les 2 jours pour les visiteurs inscrits sur le site,
+listant les offres détectées depuis le dernier envoi (jamais de mail vide
+"rien de neuf"). Double opt-in (confirmation par email avant activation) et
+lien de désabonnement dans chaque envoi — obligatoire pour la délivrabilité
+et le respect des abonnés.
+
+Envoi par **SMTP direct** (pas de service tiers) — même pattern que
+`sourcing-regie-banque/send_mail.py` : `smtplib` + STARTTLS côté digest
+périodique (Python/GitHub Actions), `nodemailer` côté confirmation
+d'inscription instantanée (Next.js/Vercel, `site/lib/mailer.ts`). Compte
+Gmail/Google Workspace recommandé avec un **mot de passe d'application**
+(jamais le mot de passe du compte) — myaccount.google.com/apppasswords,
+nécessite la validation en 2 étapes activée au préalable.
+
+Variables à renseigner aux **deux endroits** (mêmes valeurs) :
+
+| Variable | Où | Rôle |
+|---|---|---|
+| `SMTP_SERVER` | Vercel + secret GitHub Actions | `smtp.gmail.com` |
+| `SMTP_PORT` | Vercel + secret GitHub Actions | `587` |
+| `SMTP_USER` | Vercel + secret GitHub Actions | adresse Gmail d'envoi |
+| `SMTP_PASS` | Vercel + secret GitHub Actions | mot de passe d'application |
+| `FROM_EMAIL` | Vercel + secret GitHub Actions | adresse affichée comme expéditeur |
+| `SITE_URL` | secret GitHub Actions uniquement | URL réelle du site déployé (liens absolus dans le digest) |
+
+Le cron (`0 8 */2 * *`, tous les 2 jours) est désactivé par défaut dans
+`.github/workflows/newsletter.yml` tant que ces secrets ne sont pas
+configurés — même précaution que pour `scrape.yml`. Testez d'abord avec
+*Run workflow* (option `dry_run` disponible pour vérifier sans envoyer
+aucun email).
+
 ## Tests
 
 ```bash

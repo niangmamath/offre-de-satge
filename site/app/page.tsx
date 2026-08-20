@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { getDerniereMaj, getOffres, type Offre } from "@/lib/db";
 import OffresExplorer from "@/components/OffresExplorer";
+import NewsletterForm from "@/components/NewsletterForm";
 
 // Liste simple, pas de JobPosting ici : Google recommande UN JobPosting sur
 // la page dédiée à CETTE offre (cf. app/offre/[slug]/page.tsx), pas groupés
@@ -51,7 +52,13 @@ export default async function Home() {
       )}
 
       <footer className="mt-auto border-t border-gray-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-8 text-center text-xs text-gray-400 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-10 text-center sm:px-6">
+          <p className="text-sm font-semibold text-gray-800">
+            📬 Recevez les nouvelles offres par email, tous les 2 jours
+          </p>
+          <NewsletterForm />
+        </div>
+        <div className="border-t border-gray-100 px-4 py-6 text-center text-xs text-gray-400 sm:px-6">
           Offres collectées automatiquement (LinkedIn, Rekrute.com) — vérifiez toujours
           les conditions auprès de l&apos;entreprise avant de postuler.
         </div>
