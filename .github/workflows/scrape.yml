@@ -3,9 +3,11 @@ name: Scraping stages Maroc
 # IMPORTANT (mise en route) : le déclencheur automatique `schedule` est
 # VOLONTAIREMENT désactivé ci-dessous (commenté) tant que le secret
 # DATABASE_URL n'a pas été configuré sur CE dépôt (Settings → Secrets and
-# variables → Actions). Sans ça, un cron actif écrirait quand même l'Excel
-# mais jamais la base — le site resterait vide sans erreur visible. Une
-# fois le secret en place :
+# variables → Actions) — chaîne de connexion Supabase, connexion DIRECTE
+# (port 5432 ; le "pooler" port 6543 est pour le site Vercel, pas
+# nécessaire ici pour un run séquentiel unique). Sans ce secret, un cron
+# actif écrirait quand même l'Excel mais jamais la base — le site
+# resterait vide sans erreur visible. Une fois le secret en place :
 #   1. Testez avec "Run workflow" (déclenchement manuel, actif dès
 #      maintenant) et vérifiez que ça se termine en vert ET que le site
 #      affiche les nouvelles offres.

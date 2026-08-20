@@ -30,8 +30,17 @@ function getPool(): Pool | null {
     const local = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
     globalForPg._pgPool = new Pool({
       connectionString,
-      // Neon/Vercel Postgres exigent TLS ; une base locale de dev n'en a pas.
+      // Supabase (comme Neon/Vercel Postgres) exige TLS ; une base locale
+      // de dev n'en a pas.
       ssl: local ? false : { rejectUnauthorized: false },
+      // Chaque instance de fonction serverless Vercel a SON PROPRE process
+      // Node (le singleton globalThis n'aide qu'entre requêtes d'UNE MÊME
+      // instance déjà chaude) : on garde donc peu de connexions par pool
+      // pour ne pas cumuler avec les autres instances. Utiliser l'URL du
+      // "connection pooler" Supabase (port 6543, mode transaction) pour
+      // DATABASE_URL côté site limite encore plus ce risque — voir
+      // Settings → Database → Connection pooling sur Supabase.
+      max: 3,
     });
   }
   return globalForPg._pgPool;

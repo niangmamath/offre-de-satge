@@ -89,6 +89,59 @@ nouvelles offres convenables sont ajoutées à la suite, marquées ★. Les
 offres écartées restent tracées dans `annonces_vues.json` (jamais perdues,
 juste non affichées).
 
+## Site web (`site/`)
+
+Application Next.js (App Router, Tailwind) qui affiche les offres
+convenables en direct — filtres par domaine, type de stage, ville,
+recherche texte. Elle ne lit jamais l'Excel : elle interroge une base
+**Postgres (Supabase)** alimentée par `db_sync.py` à chaque run du pipeline.
+
+```bash
+cd site
+npm install
+cp .env.local.example .env.local   # renseigner DATABASE_URL (Supabase)
+npm run dev
+```
+
+Hébergement prévu : **Vercel**, avec *Root Directory* = `site`.
+
+## Base de données (Supabase)
+
+`db_sync.py` synchronise les offres convenables vers une table Postgres
+(`offres`) à chaque exécution de `stages_maroc.py` : upsert par URL,
+suppression des offres qui ne sont plus convenables. `premiere_detection`
+n'est jamais réécrite après l'insertion initiale (même logique que
+`annonces_vues.json`).
+
+Dégrade proprement : si `psycopg2` n'est pas installé ou si `DATABASE_URL`
+n'est pas définie, la synchro est simplement ignorée (message affiché) — un
+run local sans base configurée continue de fonctionner normalement (Excel
+inchangé).
+
+Mise en route :
+1. Créer un projet sur [supabase.com](https://supabase.com) (gratuit).
+2. Récupérer la chaîne de connexion (Settings → Database → Connection
+   string) :
+   - **Site (Vercel)** : utiliser le *connection pooler* (Transaction mode,
+     port 6543) — un environnement serverless ouvre beaucoup de connexions
+     courtes, le pooler évite de saturer Postgres. Voir Settings → Database
+     → Connection pooling.
+   - **Pipeline (local ou GitHub Actions)** : la connexion directe (port
+     5432) suffit — un run séquentiel unique, pas de concurrence.
+3. `DATABASE_URL` à renseigner : en local dans `.env` (racine, pour Python)
+   et `site/.env.local` (pour Next.js) ; sur Vercel dans les variables
+   d'environnement du projet ; sur GitHub Actions dans Settings → Secrets
+   and variables → Actions (utilisé par `.github/workflows/scrape.yml`).
+
+## Automatisation cloud (`.github/workflows/scrape.yml`)
+
+Exécute `python stages_maroc.py` sur GitHub Actions (déclenchement manuel
+actif dès maintenant, `cron` quotidien désactivé par défaut tant que le
+secret `DATABASE_URL` n'est pas configuré — cf. commentaires dans le
+fichier). Le cache de scraping (`cache_stages_maroc.json`) est conservé
+entre les runs via `actions/cache`, pour ne pas re-télécharger toutes les
+fiches LinkedIn à chaque exécution.
+
 ## Tests
 
 ```bash
@@ -107,9 +160,6 @@ python -m unittest test_classifier
   Le "Type de contrat" affiché par Rekrute est souvent absent/commenté en
   HTML : le tri "est-ce vraiment un stage" repose donc sur le classifieur
   (titre + texte), pas sur ce champ.
-- **Pas d'automatisation cloud pour l'instant** (pas de GitHub Actions / sync
-  Google Drive, contrairement à `sourcing-regie-banque`) — à ajouter une
-  fois le pipeline local validé sur des runs réels.
 - **Autres sources marocaines non intégrées** (ANAPEC, MarocAnnonces,
   Indeed Maroc...) — structure non vérifiée à ce jour, ajoutables via le
   registre `COLLECTORS` de `sources.py`.
