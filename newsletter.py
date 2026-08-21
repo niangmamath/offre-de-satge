@@ -43,9 +43,15 @@ DELAI_ENTRE_ENVOIS_S = 1.5  # pacing best-effort, évite de brusquer le fourniss
 def _env(nom, defaut=None):
     """.strip() systématique : un secret GitHub/Vercel copié-collé peut
     embarquer un retour à la ligne invisible (incident réel documenté dans
-    sourcing-regie-banque/drive_sync.py — même précaution ici)."""
-    v = os.environ.get(nom, defaut)
-    return v.strip() if isinstance(v, str) else v
+    sourcing-regie-banque/drive_sync.py — même précaution ici). Un secret
+    GitHub Actions absent devient une chaîne VIDE (pas inexistante) une
+    fois injecté dans l'environnement -- traitée ici comme absente, sinon
+    le défaut ne s'applique jamais et un simple oubli de configuration
+    peut planter un run au lieu de dégrader proprement (incident réel :
+    int("") sur SMTP_PORT)."""
+    v = os.environ.get(nom)
+    v = v.strip() if isinstance(v, str) else v
+    return v if v else defaut
 
 
 def offres_recentes(cur, jours=2, limite=MAX_OFFRES_PAR_MAIL):
@@ -102,13 +108,17 @@ def construire_html(offres, reste, site_url, token):
 
 
 def _smtp_connect():
+    # Un secret GitHub Actions absent devient une chaine VIDE (pas
+    # inexistante) une fois injectee dans l'environnement -- il faut donc
+    # verifier la presence AVANT tout int()/traitement, sinon un simple
+    # oubli de configuration plante le run au lieu de degrader proprement.
     server = _env("SMTP_SERVER")
-    port = int(_env("SMTP_PORT", "587"))
     user = _env("SMTP_USER")
     password = _env("SMTP_PASS")
     from_email = _env("FROM_EMAIL") or user
     if not (server and user and password and from_email):
         return None
+    port = int(_env("SMTP_PORT", "587"))
     smtp = smtplib.SMTP(server, port, timeout=30)
     smtp.starttls()
     smtp.login(user, password)
