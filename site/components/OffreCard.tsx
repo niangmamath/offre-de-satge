@@ -60,7 +60,7 @@ export default function OffreCard({ offre }: { offre: Offre }) {
             {offre.poste}
           </h3>
         </div>
-        <Badge className={`shrink-0 ${style.badge}`}>{offre.fenetre}</Badge>
+        {estNouvelle ? null : <Badge className={`shrink-0 ${style.badge}`}>{offre.fenetre}</Badge>}
       </div>
 
       <div className="text-sm text-gray-600">
