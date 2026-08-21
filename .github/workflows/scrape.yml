@@ -1,22 +1,14 @@
 name: Scraping stages Maroc
 
-# IMPORTANT (mise en route) : le déclencheur automatique `schedule` est
-# VOLONTAIREMENT désactivé ci-dessous (commenté) tant que le secret
-# DATABASE_URL n'a pas été configuré sur CE dépôt (Settings → Secrets and
-# variables → Actions) — chaîne de connexion Supabase, connexion DIRECTE
-# (port 5432 ; le "pooler" port 6543 est pour le site Vercel, pas
-# nécessaire ici pour un run séquentiel unique). Sans ce secret, un cron
-# actif écrirait quand même l'Excel mais jamais la base — le site
-# resterait vide sans erreur visible. Une fois le secret en place :
-#   1. Testez avec "Run workflow" (déclenchement manuel, actif dès
-#      maintenant) et vérifiez que ça se termine en vert ET que le site
-#      affiche les nouvelles offres.
-#   2. Décommentez les 2 lignes "schedule:" / "- cron:" ci-dessous.
-# L'heure du cron est en UTC : 06:00 UTC ≈ 07:00 heure Maroc en hiver,
-# 08:00 en été.
+# Cron actif : run automatique tous les jours à 06:00 UTC (≈ 07:00 heure
+# Maroc en hiver, 08:00 en été). DATABASE_URL est configuré (secret GitHub
+# Actions, chaîne de connexion Supabase directe port 5432 — le "pooler"
+# port 6543 est pour le site Vercel, pas nécessaire ici pour un run
+# séquentiel unique) et le workflow a déjà été validé par plusieurs runs
+# manuels réussis avant activation.
 on:
-  # schedule:
-  #   - cron: "0 6 * * *"
+  schedule:
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 jobs:
