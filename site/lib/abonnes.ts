@@ -25,17 +25,41 @@ CREATE TABLE IF NOT EXISTS abonnes (
     id SERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     token TEXT NOT NULL,
+    code TEXT,
+    code_expire TIMESTAMPTZ,
+    tentatives INTEGER NOT NULL DEFAULT 0,
     confirme BOOLEAN NOT NULL DEFAULT FALSE,
     actif BOOLEAN NOT NULL DEFAULT TRUE,
     cree_le TIMESTAMPTZ NOT NULL DEFAULT now(),
     dernier_envoi TIMESTAMPTZ
 )`;
 
+// Migrations additives idempotentes : la table peut déjà exister depuis la
+// version "confirmation par lien" (colonnes code/code_expire/tentatives
+// absentes) — même pattern que db_sync.py côté Python.
+const MIGRATIONS_SQL = [
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS code TEXT",
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS code_expire TIMESTAMPTZ",
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS tentatives INTEGER NOT NULL DEFAULT 0",
+];
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CODE_VALIDITE_MIN = 15;
+const MAX_TENTATIVES = 5;
+
+async function ensureSchema(pool: Pool) {
+  await pool.query(TABLE_SQL);
+  for (const m of MIGRATIONS_SQL) await pool.query(m);
+}
+
+function genererCode(): string {
+  // 6 chiffres, toujours zero-paddé (ex. "042817").
+  return String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+}
 
 export type SubscribeResult =
-  | { status: "created"; token: string }
-  | { status: "resent"; token: string }
+  | { status: "created"; code: string }
+  | { status: "resent"; code: string }
   | { status: "reactivated" }
   | { status: "already_confirmed" }
   | { status: "invalid_email" }
@@ -47,44 +71,81 @@ export async function subscribe(emailRaw: string): Promise<SubscribeResult> {
 
   const pool = getPool();
   if (!pool) return { status: "db_unavailable" };
+  await ensureSchema(pool);
 
-  await pool.query(TABLE_SQL);
-
-  const existing = await pool.query<{ token: string; confirme: boolean; actif: boolean }>(
-    "SELECT token, confirme, actif FROM abonnes WHERE email = $1",
+  const existing = await pool.query<{ confirme: boolean; actif: boolean }>(
+    "SELECT confirme, actif FROM abonnes WHERE email = $1",
     [email]
   );
+
+  const code = genererCode();
+  const expire = new Date(Date.now() + CODE_VALIDITE_MIN * 60_000);
+
   if (existing.rows.length > 0) {
     const row = existing.rows[0];
     if (row.confirme && row.actif) return { status: "already_confirmed" };
     if (row.confirme && !row.actif) {
-      // Déjà confirmé mais désabonné entre-temps -> réactive sans repasser
-      // par un nouveau mail de confirmation (déjà prouvé une fois que
-      // l'adresse lui appartient).
+      // Déjà confirmé mais désabonné entre-temps -> réactive directement
+      // (adresse déjà prouvée une fois), pas besoin d'un nouveau code.
       await pool.query("UPDATE abonnes SET actif = TRUE WHERE email = $1", [email]);
       return { status: "reactivated" };
     }
-    // Jamais confirmé -> on relance avec le MÊME token (idempotent, pas de
-    // fuite de tokens multiples pour une même adresse en cas de double clic).
-    await pool.query("UPDATE abonnes SET actif = TRUE WHERE email = $1", [email]);
-    return { status: "resent", token: row.token };
+    // Jamais confirmé -> nouveau code, tentatives remises à zéro.
+    await pool.query(
+      "UPDATE abonnes SET actif = TRUE, code = $2, code_expire = $3, tentatives = 0 WHERE email = $1",
+      [email, code, expire]
+    );
+    return { status: "resent", code };
   }
 
-  const token = randomUUID();
+  const token = randomUUID(); // désabonnement uniquement, jamais affiché à l'inscription
   await pool.query(
-    "INSERT INTO abonnes (email, token) VALUES ($1, $2)",
-    [email, token]
+    "INSERT INTO abonnes (email, token, code, code_expire) VALUES ($1, $2, $3, $4)",
+    [email, token, code, expire]
   );
-  return { status: "created", token };
+  return { status: "created", code };
 }
 
-export async function confirm(token: string): Promise<boolean> {
+export type VerifyResult =
+  | { status: "ok" }
+  | { status: "wrong_code" }
+  | { status: "expired" }
+  | { status: "too_many_attempts" }
+  | { status: "not_found" }
+  | { status: "db_unavailable" };
+
+export async function verifyOtp(emailRaw: string, codeRaw: string): Promise<VerifyResult> {
+  const email = emailRaw.trim().toLowerCase();
+  const code = codeRaw.trim();
+
   const pool = getPool();
-  if (!pool) return false;
-  const res = await pool.query(
-    "UPDATE abonnes SET confirme = TRUE WHERE token = $1", [token]
+  if (!pool) return { status: "db_unavailable" };
+  await ensureSchema(pool);
+
+  const res = await pool.query<{
+    code: string | null; code_expire: string | null; tentatives: number; confirme: boolean;
+  }>("SELECT code, code_expire, tentatives, confirme FROM abonnes WHERE email = $1", [email]);
+  if (res.rows.length === 0) return { status: "not_found" };
+  const row = res.rows[0];
+
+  if (row.confirme) return { status: "ok" }; // déjà confirmé (double-clic) -> idempotent
+
+  if (row.tentatives >= MAX_TENTATIVES) return { status: "too_many_attempts" };
+
+  if (!row.code || !row.code_expire || new Date(row.code_expire) < new Date()) {
+    return { status: "expired" };
+  }
+
+  if (row.code !== code) {
+    await pool.query("UPDATE abonnes SET tentatives = tentatives + 1 WHERE email = $1", [email]);
+    return { status: "wrong_code" };
+  }
+
+  await pool.query(
+    "UPDATE abonnes SET confirme = TRUE, code = NULL, code_expire = NULL WHERE email = $1",
+    [email]
   );
-  return (res.rowCount ?? 0) > 0;
+  return { status: "ok" };
 }
 
 export async function unsubscribe(token: string): Promise<boolean> {

@@ -2,28 +2,22 @@ import { NextResponse } from "next/server";
 import { subscribe } from "@/lib/abonnes";
 import { getTransport, fromAddress } from "@/lib/mailer";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-
-async function envoyerConfirmation(email: string, token: string) {
+async function envoyerCode(email: string, code: string) {
   const transport = getTransport();
   if (!transport) {
-    console.warn("[subscribe] SMTP non configuré — email de confirmation non envoyé.");
+    console.warn("[subscribe] SMTP non configuré — code de confirmation non envoyé.");
     return;
   }
-  const lien = `${siteUrl}/api/confirm?token=${token}`;
   await transport.sendMail({
     from: fromAddress(),
     to: email,
-    subject: "Confirmez votre inscription — Stages au Maroc",
+    subject: `${code} — votre code de confirmation Stages au Maroc`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;">
         <h2 style="color:#4338ca;">🎓 Stages au Maroc</h2>
-        <p>Un clic pour confirmer votre inscription à la newsletter (nouvelles offres tous les 2 jours) :</p>
-        <a href="${lien}" style="display:inline-block;margin:12px 0;background:linear-gradient(135deg,#4338ca,#7c3aed);color:#fff;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:600;">
-          Confirmer mon inscription
-        </a>
+        <p>Voici votre code pour confirmer votre inscription à la newsletter (nouvelles offres tous les 2 jours) :</p>
+        <p style="font-size:32px;font-weight:700;letter-spacing:8px;text-align:center;color:#4338ca;margin:20px 0;">${code}</p>
+        <p style="color:#666;font-size:13px;">Ce code est valable 15 minutes. Saisissez-le sur la page où vous vous êtes inscrit(e).</p>
         <p style="color:#999;font-size:12px;">Si vous n'êtes pas à l'origine de cette inscription, ignorez simplement ce message.</p>
       </div>`,
   });
@@ -63,11 +57,11 @@ export async function POST(request: Request) {
     case "created":
     case "resent":
       try {
-        await envoyerConfirmation(email, result.token);
+        await envoyerCode(email, result.code);
       } catch (e) {
-        console.error("[subscribe] échec envoi confirmation:", e);
+        console.error("[subscribe] échec envoi du code:", e);
         return NextResponse.json(
-          { error: "Inscription enregistrée mais l'email de confirmation n'a pas pu être envoyé." },
+          { error: "Inscription enregistrée mais le code n'a pas pu être envoyé." },
           { status: 502 }
         );
       }

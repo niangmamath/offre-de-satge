@@ -146,9 +146,13 @@ fiches LinkedIn à chaque exécution.
 
 Digest par email tous les 2 jours pour les visiteurs inscrits sur le site,
 listant les offres détectées depuis le dernier envoi (jamais de mail vide
-"rien de neuf"). Double opt-in (confirmation par email avant activation) et
-lien de désabonnement dans chaque envoi — obligatoire pour la délivrabilité
-et le respect des abonnés.
+"rien de neuf"). Double opt-in par **code à 6 chiffres** (pas un lien
+magique — un lien cliqué depuis un client mail peut être bloqué par une
+protection d'accès ou invalidé par un scanner anti-spam qui le "clique"
+avant l'utilisateur ; un code saisi sur une page déjà chargée n'a pas ce
+problème), valable 15 min, verrouillé après 5 tentatives incorrectes. Lien
+de désabonnement classique dans chaque envoi — obligatoire pour la
+délivrabilité et le respect des abonnés.
 
 Envoi par **SMTP direct** (pas de service tiers) — même pattern que
 `sourcing-regie-banque/send_mail.py` : `smtplib` + STARTTLS côté digest
