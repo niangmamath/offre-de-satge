@@ -8,9 +8,13 @@ Registre COLLECTORS : chaque fonction prend 0 argument et renvoie une liste
 de dicts. Un collecteur qui échoue ne doit jamais faire tomber les autres
 (cf. collect_all()).
 """
+import datetime as dt
+import json
+import os
 import random
 import re
 import time
+import xml.etree.ElementTree as ET
 
 import requests
 from bs4 import BeautifulSoup
@@ -151,8 +155,156 @@ def collect_rekrute(max_pages=REKRUTE_MAX_PAGES):
     return list(vus.values())
 
 
+# ------------------------------------------------------------- STAGIAIRES.MA
+# Plateforme marocaine dédiée aux stages. robots.txt vérifié le 2026-08-24 :
+# User-agent: * -> Allow: / ; Disallow: /api/, /under-maintenance/, /*?*
+# (aucune URL avec paramètre de requête) ; Crawl-delay: 1. On respecte les
+# trois : découverte via LEUR sitemap (URLs propres, jamais de "?"), fiches
+# détail sur des URLs propres également, et un délai >= 1s entre requêtes.
+STAGIAIRES_BASE = "https://www.stagiaires.ma"
+STAGIAIRES_SITEMAP = f"{STAGIAIRES_BASE}/offre-sitemap.xml"
+STAGIAIRES_CRAWL_DELAY_S = 1.3  # robots.txt exige >= 1s ; marge de sécurité
+# Le sitemap observé contient les offres les plus RÉCENTES en tête (id
+# décroissant) — on ne regarde donc que les N premières par run : une
+# offre plus ancienne que ça est de toute façon déjà connue via le cache
+# (ou hors de portée de la fenêtre "récent" du classifieur).
+STAGIAIRES_MAX_SITEMAP = 200
+STAGIAIRES_MAX_DETAIL = 80  # plafond de NOUVELLES fiches téléchargées par run
+
+
+def _stagiaires_cache_path():
+    """Même fichier que stages_maroc.CACHE_FILE (les deux modules vivent à
+    la racine du projet) — permet à ce collecteur de ne re-télécharger QUE
+    les offres jamais vues, sans dépendre d'un paramètre supplémentaire
+    dans l'interface collect_all()/COLLECTORS."""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache_stages_maroc.json")
+
+
+def _stagiaires_known():
+    known = {}
+    try:
+        with open(_stagiaires_cache_path(), encoding="utf-8") as f:
+            for a in json.load(f):
+                if a.get("source") == "Stagiaires.ma":
+                    u = (a.get("url") or "").split("?")[0].rstrip("/")
+                    if u:
+                        known[u] = a
+    except Exception:
+        pass
+    return known
+
+
+def _stagiaires_get(url):
+    headers = {"User-Agent": random.choice(USER_AGENTS), "Accept-Language": "fr-FR,fr;q=0.9"}
+    try:
+        r = requests.get(url, headers=headers, timeout=25)
+    except requests.RequestException as e:
+        print(f"    ! Stagiaires.ma réseau : {e}")
+        return None
+    if r.status_code != 200:
+        print(f"    ! Stagiaires.ma HTTP {r.status_code} sur {url}")
+        return None
+    return r.text
+
+
+def _stagiaires_sitemap_urls():
+    txt = _stagiaires_get(STAGIAIRES_SITEMAP)
+    if not txt:
+        return []
+    try:
+        root = ET.fromstring(txt)
+    except ET.ParseError:
+        return []
+    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    return [loc.text.strip() for loc in root.findall(".//sm:loc", ns) if loc.text]
+
+
+def _stagiaires_parse_detail(url, html):
+    """Extrait le JSON-LD JobPosting (id="job-posting-<id>") de la page —
+    déjà structuré (titre, entreprise, ville, dates, type d'emploi, et même
+    la fourchette d'indemnité), pas besoin de parser le HTML visuel."""
+    m = re.search(
+        r'<script id="job-posting-\d+" type="application/ld\+json">(.*?)</script>',
+        html, re.S)
+    if not m:
+        return None
+    try:
+        data = json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None
+
+    desc_html = data.get("description", "") or ""
+    texte = BeautifulSoup(desc_html, "lxml").get_text(" ", strip=True)
+
+    entite = (data.get("hiringOrganization") or {}).get("name", "")
+    adresse = (data.get("jobLocation") or {}).get("address") or {}
+    ville = adresse.get("addressLocality", "") or ""
+
+    date_pub = (data.get("datePosted") or "")[:10]
+    cloturee = False
+    valid_through = data.get("validThrough")
+    if valid_through:
+        try:
+            cloturee = dt.date.fromisoformat(valid_through[:10]) < dt.date.today()
+        except ValueError:
+            pass
+
+    return {
+        "poste": data.get("title", ""),
+        "entite": entite,
+        "ville": ville,
+        "url": url,
+        "date_pub": date_pub,
+        "posted_relative": "",
+        "texte": texte,
+        "emploi_label": data.get("employmentType", ""),
+        "nb_candidats_txt": "",
+        "cloturee": cloturee,
+        "republication": "",
+        "open_confirme": True,  # listée au sitemap = considérée active par le site
+        "source": "Stagiaires.ma",
+    }
+
+
+def collect_stagiaires():
+    """Stagiaires.ma : plateforme dédiée aux stages au Maroc. Découverte via
+    leur sitemap officiel (jamais de recherche par mot-clé — leur robots.txt
+    interdit toute URL avec "?"), cache local pour ne re-télécharger que les
+    offres jamais vues. Best-effort : si le sitemap ou le gabarit JSON-LD
+    change, renvoie simplement moins de résultats sans planter le run (cf.
+    collect_all)."""
+    known = _stagiaires_known()
+    urls = _stagiaires_sitemap_urls()[:STAGIAIRES_MAX_SITEMAP]
+    if not urls:
+        print("  Stagiaires.ma : sitemap injoignable ou vide — source ignorée ce run.")
+        return []
+
+    annonces = []
+    fetched = reused = 0
+    for url in urls:
+        u = url.split("?")[0].rstrip("/")
+        if u in known:
+            annonces.append(known[u])
+            reused += 1
+            continue
+        if fetched >= STAGIAIRES_MAX_DETAIL:
+            continue
+        html = _stagiaires_get(url)
+        time.sleep(STAGIAIRES_CRAWL_DELAY_S)
+        fetched += 1
+        if not html:
+            continue
+        annonce = _stagiaires_parse_detail(url, html)
+        if annonce:
+            annonces.append(annonce)
+    print(f"  Stagiaires.ma : {len(annonces)} annonces "
+          f"({fetched} fiches téléchargées, {reused} réutilisées du cache).")
+    return annonces
+
+
 COLLECTORS = {
     "rekrute": collect_rekrute,
+    "stagiaires": collect_stagiaires,
 }
 
 

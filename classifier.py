@@ -115,7 +115,11 @@ COORD_STAGE_RE = re.compile(
     re.I)
 
 
-EMP_POSITIF_KW = ("stage", "alternance", "apprentissage")
+# "intern" (valeur standard schema.org employmentType="INTERN", utilisée
+# par Stagiaires.ma) : ne collisionne pas avec "interim"/"intérim" (EMP_
+# NEGATIF_KW ci-dessous) -- "interim" ne contient pas la sous-chaîne
+# "intern" (après "inter" vient "im", pas "n").
+EMP_POSITIF_KW = ("stage", "alternance", "apprentissage", "intern")
 # Valeurs de "type de contrat" sans ambiguïté possible avec un stage.
 # Volontairement PAS "temps plein"/"temps partiel"/"contrat" : sur LinkedIn
 # ce champ décrit souvent un HORAIRE, pas la nature du contrat, et de vrais

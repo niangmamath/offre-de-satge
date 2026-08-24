@@ -103,6 +103,23 @@ class TestDetectStage(unittest.TestCase):
             emploi_label="Stage")
         self.assertTrue(est)
 
+    def test_stagiaires_ma_employment_type_intern(self):
+        """Stagiaires.ma expose employmentType="INTERN" (valeur standard
+        schema.org) dans son JSON-LD — doit être reconnu comme un stage
+        même si le titre seul n'est pas explicite."""
+        est, typ, motif = C.detect_stage(
+            "Growth & Acquisition", "Rejoignez notre équipe acquisition.",
+            emploi_label="INTERN")
+        self.assertTrue(est)
+
+    def test_intern_ne_collisionne_pas_avec_interim(self):
+        """"intérim" (mission temporaire salariée) ne doit jamais être pris
+        pour "intern" (stage) malgré le préfixe commun "inter"."""
+        est, typ, motif = C.detect_stage(
+            "Comptable", "Poste en CDI, temps plein indéterminé.",
+            emploi_label="Intérim")
+        self.assertFalse(est)
+
     def test_linkedin_temps_plein_nignore_pas_un_stage_evident(self):
         """Cas réel LinkedIn : une vraie offre "Stage PFE" est étiquetée
         "Temps plein" côté LinkedIn (champ = horaire, pas nature du

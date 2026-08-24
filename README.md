@@ -46,6 +46,14 @@ Réglages via variables d'environnement (facultatif) :
 |---|---|---|
 | **LinkedIn** | endpoint public `jobs-guest` (sans connexion) | n'utilise pas votre compte ; mécanique portée depuis `sourcing-regie-banque` |
 | **Rekrute.com** | scraping best-effort (pas d'API publique) | référence du marché marocain ; `robots.txt` vérifié — pas de blocage générique, seuls les gros crawlers nommés (Googlebot, GPTBot...) sont restreints sur les pages de résultats |
+| **Stagiaires.ma** | scraping via sitemap officiel (pas d'API publique) | plateforme dédiée stages + premiers emplois ; `robots.txt` vérifié — découverte uniquement via leur sitemap (`/offre-sitemap.xml`, jamais d'URL avec `?`, interdite par leur robots.txt), `Crawl-delay: 1` respecté. Pages avec JSON-LD `JobPosting` structuré (titre, entreprise, ville, dates, `employmentType`, indemnité) — extraction fiable, pas de parsing HTML fragile. Liste aussi de vrais emplois (`FULL_TIME`) en plus des stages : filtrés normalement par `classifier.detect_stage()`. |
+
+Sources évaluées et écartées : **Emploi.ma** (`robots.txt` bloque explicitement
+ClaudeBot et les principaux crawlers IA — respecté, pas de contournement),
+**Stage.ma** (robots.txt interdit toute URL avec paramètre de requête,
+utilisées par leur recherche), **OptionCarriere.ma** (robots.txt interdit
+précisément les pages de détail d'offre), **ANAPEC** (certificat SSL du
+site invalide côté serveur).
 
 Pour ajouter une source : écrire un collecteur dans `sources.py` (même
 contrat que `collect_rekrute` — liste de dicts avec les mêmes clés que les
