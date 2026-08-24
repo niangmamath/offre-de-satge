@@ -60,7 +60,7 @@ export default function NewsletterForm() {
         return;
       }
       setEtape("confirme");
-      setMessage("Inscription confirmée — vous recevrez les nouvelles offres tous les 2 jours !");
+      setMessage("Inscription confirmée — vous recevrez les nouvelles offres chaque semaine !");
     } catch {
       setErreur("Une erreur est survenue, réessayez.");
     } finally {

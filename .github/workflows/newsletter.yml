@@ -1,20 +1,14 @@
 name: Newsletter stages Maroc
 
-# IMPORTANT (mise en route) : le declencheur automatique `schedule` est
-# VOLONTAIREMENT desactive ci-dessous (commente) tant que les secrets
-# n'ont pas ete configures sur CE depot (Settings -> Secrets and variables
-# -> Actions) : DATABASE_URL, SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASS,
-# FROM_EMAIL, SITE_URL. Sans SITE_URL, les liens dans le digest pointeraient
-# vers "https://example.com". Une fois les secrets en place :
-#   1. Testez avec "Run workflow" (declenchement manuel, actif des
-#      maintenant) et verifiez la reception d'un mail de test.
-#   2. Decommentez les 2 lignes "schedule:" / "- cron:" ci-dessous pour
-#      activer l'envoi automatique tous les 2 jours.
-# L'heure du cron est en UTC : 08:00 UTC = 09:00 heure Maroc en hiver,
-# 10:00 en ete.
+# Cron actif : envoi automatique chaque LUNDI a 08:00 UTC (= 09:00 heure
+# Maroc en hiver, 10:00 en ete). Secrets deja configures sur ce depot
+# (DATABASE_URL, SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASS, FROM_EMAIL,
+# SITE_URL) et le workflow a ete valide par plusieurs runs manuels reussis
+# avant activation. newsletter.py n'envoie de toute facon rien si aucune
+# offre n'a ete detectee depuis le dernier passage (pas de mail vide).
 on:
-  # schedule:
-  #   - cron: "0 8 */2 * *"
+  schedule:
+    - cron: "0 8 * * 1"
   workflow_dispatch:
     inputs:
       dry_run:

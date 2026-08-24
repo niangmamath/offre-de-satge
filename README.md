@@ -152,7 +152,7 @@ fiches LinkedIn à chaque exécution.
 
 ## Newsletter (`newsletter.py` + `.github/workflows/newsletter.yml`)
 
-Digest par email tous les 2 jours pour les visiteurs inscrits sur le site,
+Digest par email chaque semaine pour les visiteurs inscrits sur le site,
 listant les offres détectées depuis le dernier envoi (jamais de mail vide
 "rien de neuf"). Double opt-in par **code à 6 chiffres** (pas un lien
 magique — un lien cliqué depuis un client mail peut être bloqué par une
@@ -181,11 +181,10 @@ Variables à renseigner aux **deux endroits** (mêmes valeurs) :
 | `FROM_EMAIL` | Vercel + secret GitHub Actions | adresse affichée comme expéditeur |
 | `SITE_URL` | secret GitHub Actions uniquement | URL réelle du site déployé (liens absolus dans le digest) |
 
-Le cron (`0 8 */2 * *`, tous les 2 jours) est désactivé par défaut dans
-`.github/workflows/newsletter.yml` tant que ces secrets ne sont pas
-configurés — même précaution que pour `scrape.yml`. Testez d'abord avec
-*Run workflow* (option `dry_run` disponible pour vérifier sans envoyer
-aucun email).
+Cron actif (`0 8 * * 1`, chaque lundi 08:00 UTC) dans
+`.github/workflows/newsletter.yml`, validé par plusieurs runs manuels avant
+activation — même précaution que pour `scrape.yml`. Option `dry_run`
+disponible sur *Run workflow* pour tester sans envoyer aucun email.
 
 ## Tests
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Digest périodique par email : liste les offres détectées depuis le
-dernier envoi (2 jours) aux abonnés confirmés, avec des liens vers le SITE
+dernier envoi (1 semaine) aux abonnés confirmés, avec des liens vers le SITE
 (pas directement vers LinkedIn/Rekrute).
 
 Envoi par SMTP direct (pas de service tiers) — même pattern que
@@ -54,7 +54,7 @@ def _env(nom, defaut=None):
     return v if v else defaut
 
 
-def offres_recentes(cur, jours=2, limite=MAX_OFFRES_PAR_MAIL):
+def offres_recentes(cur, jours=7, limite=MAX_OFFRES_PAR_MAIL):
     cur.execute(
         """
         SELECT poste, entite, ville, slug FROM offres
@@ -90,7 +90,7 @@ def construire_html(offres, reste, site_url, token):
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#4338ca,#7c3aed);padding:24px;border-radius:12px 12px 0 0;">
         <h1 style="color:#fff;margin:0;font-size:22px;">🎓 Stages au Maroc</h1>
-        <p style="color:#e0e7ff;margin:6px 0 0;font-size:14px;">Les nouvelles offres des 2 derniers jours</p>
+        <p style="color:#e0e7ff;margin:6px 0 0;font-size:14px;">Les nouvelles offres de la semaine</p>
       </div>
       <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 12px 12px;">
         <table style="width:100%;border-collapse:collapse;">{lignes}</table>
@@ -194,7 +194,7 @@ def main():
             conn.commit()
             offres, reste = offres_recentes(cur)
             if not offres:
-                print("  [newsletter] aucune offre neuve depuis 2 jours — rien envoyé.")
+                print("  [newsletter] aucune offre neuve depuis 1 semaine — rien envoyé.")
                 return
             envoyer(cur, conn, offres, reste, site_url, dry_run=dry_run)
     finally:

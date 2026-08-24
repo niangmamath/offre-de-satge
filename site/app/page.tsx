@@ -57,7 +57,7 @@ export default async function Home() {
           className="mx-auto flex max-w-6xl scroll-mt-6 flex-col items-center gap-3 px-4 py-10 text-center sm:px-6"
         >
           <p className="text-sm font-semibold text-gray-800">
-            📬 Recevez les nouvelles offres par email, tous les 2 jours
+            📬 Recevez les nouvelles offres par email, chaque semaine
           </p>
           <NewsletterForm />
         </div>
