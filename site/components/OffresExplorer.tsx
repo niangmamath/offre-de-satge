@@ -101,16 +101,24 @@ export default function OffresExplorer({
             />
           </div>
 
-          {offres.length > 0 ? (
-            <p className="mt-3 text-xs text-indigo-100 sm:text-sm">
-              <span className="font-semibold text-white">{offres.length}</span> offres actives
-              {" · "}
-              <span className="font-semibold text-white">{nouvelles}</span> nouvelle
-              {nouvelles !== 1 ? "s" : ""}
-              {" · "}
-              <span className="font-semibold text-white">{domaines.length - 1}</span> domaines
-            </p>
-          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {offres.length > 0 ? (
+              <p className="text-xs text-indigo-100 sm:text-sm">
+                <span className="font-semibold text-white">{offres.length}</span> offres actives
+                {" · "}
+                <span className="font-semibold text-white">{nouvelles}</span> nouvelle
+                {nouvelles !== 1 ? "s" : ""}
+                {" · "}
+                <span className="font-semibold text-white">{domaines.length - 1}</span> domaines
+              </p>
+            ) : null}
+            <a
+              href="#newsletter"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/30 transition hover:bg-white/25 sm:text-sm"
+            >
+              📬 Recevoir les nouvelles offres par email
+            </a>
+          </div>
         </div>
       </header>
 
