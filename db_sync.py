@@ -46,6 +46,13 @@ MIGRATIONS_SQL = [
     "ALTER TABLE offres ADD COLUMN IF NOT EXISTS slug TEXT",
     "CREATE UNIQUE INDEX IF NOT EXISTS offres_slug_idx ON offres (slug)",
     "ALTER TABLE offres ADD COLUMN IF NOT EXISTS indemnite TEXT",
+    # masque/manuel : gérées UNIQUEMENT par l'admin du site (jamais par ce
+    # script) -- absentes de UPSERT_SQL exprès, pour ne jamais être écrasées
+    # par un run de scraping. "manuel" protège en plus la ligne de la purge
+    # ci-dessous (sync() ne doit jamais supprimer une offre ajoutée à la main,
+    # puisqu'elle ne sera par définition jamais dans le lot re-scrapé).
+    "ALTER TABLE offres ADD COLUMN IF NOT EXISTS masque BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE offres ADD COLUMN IF NOT EXISTS manuel BOOLEAN NOT NULL DEFAULT FALSE",
 ]
 
 UPSERT_SQL = """
@@ -154,10 +161,10 @@ def sync(items, is_convenable, database_url=None):
                     cur.execute(UPSERT_SQL, _row(a))
                 if urls_gardees:
                     cur.execute(
-                        "DELETE FROM offres WHERE url != ALL(%s)",
+                        "DELETE FROM offres WHERE url != ALL(%s) AND manuel = FALSE",
                         (list(urls_gardees),))
                 else:
-                    cur.execute("DELETE FROM offres")
+                    cur.execute("DELETE FROM offres WHERE manuel = FALSE")
                 supprimees = cur.rowcount
             conn.commit()
         finally:

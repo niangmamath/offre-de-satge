@@ -176,3 +176,65 @@ export async function unsubscribe(token: string): Promise<boolean> {
   );
   return (res.rowCount ?? 0) > 0;
 }
+
+// --- Administration (CMS) -------------------------------------------------
+
+export type AbonneAdmin = {
+  id: number;
+  email: string;
+  token: string;
+  confirme: boolean;
+  actif: boolean;
+  domaine_prefere: string | null;
+  cree_le: string;
+  dernier_envoi: string | null;
+};
+
+export async function listerAbonnesAdmin(): Promise<AbonneAdmin[]> {
+  const pool = getPool();
+  if (!pool) return [];
+  await ensureSchema(pool);
+  const { rows } = await pool.query<AbonneAdmin>(
+    `SELECT id, email, token, confirme, actif, domaine_prefere, cree_le, dernier_envoi
+     FROM abonnes ORDER BY cree_le DESC`
+  );
+  return rows;
+}
+
+export type AbonnesStats = {
+  confirmesActifs: number;
+  enAttente: number;
+  desabonnes: number;
+  parDomaine: { domaine: string; n: number }[];
+};
+
+export async function getAbonnesStats(): Promise<AbonnesStats | null> {
+  const pool = getPool();
+  if (!pool) return null;
+  await ensureSchema(pool);
+  const [confirmesActifs, enAttente, desabonnes, parDomaine] = await Promise.all([
+    pool.query<{ count: string }>("SELECT count(*) FROM abonnes WHERE confirme = TRUE AND actif = TRUE"),
+    pool.query<{ count: string }>("SELECT count(*) FROM abonnes WHERE confirme = FALSE"),
+    pool.query<{ count: string }>("SELECT count(*) FROM abonnes WHERE confirme = TRUE AND actif = FALSE"),
+    pool.query<{ domaine: string; n: string }>(
+      `SELECT COALESCE(domaine_prefere, 'Tous domaines') AS domaine, count(*) AS n
+       FROM abonnes WHERE confirme = TRUE AND actif = TRUE
+       GROUP BY domaine ORDER BY n DESC`
+    ),
+  ]);
+  return {
+    confirmesActifs: Number(confirmesActifs.rows[0]?.count ?? 0),
+    enAttente: Number(enAttente.rows[0]?.count ?? 0),
+    desabonnes: Number(desabonnes.rows[0]?.count ?? 0),
+    parDomaine: parDomaine.rows.map((r) => ({ domaine: r.domaine, n: Number(r.n) })),
+  };
+}
+
+/** Désabonnement déclenché par l'admin (par id, pas par token -- l'admin
+ * n'a pas le token de l'abonné sous la main dans l'interface). */
+export async function desabonnerParId(id: number): Promise<boolean> {
+  const pool = getPool();
+  if (!pool) return false;
+  const res = await pool.query("UPDATE abonnes SET actif = FALSE WHERE id = $1", [id]);
+  return (res.rowCount ?? 0) > 0;
+}

@@ -221,6 +221,41 @@ Cron actif (`0 8 * * 1`, chaque lundi 08:00 UTC) dans
 activation — même précaution que pour `scrape.yml`. Option `dry_run`
 disponible sur *Run workflow* pour tester sans envoyer aucun email.
 
+## Administration (`site/app/admin`)
+
+Interface `/admin` (mot de passe unique, variable `ADMIN_PASSWORD` côté
+Vercel) pour gérer le site sans toucher à la base à la main :
+
+- **Offres** (`/admin/offres`) : masquer/afficher, supprimer, modifier les
+  champs descriptifs, ou ajouter une offre manuellement (jamais touchée par
+  le scraping automatique). Les modifications sur une offre *scrapée*
+  peuvent être écrasées au prochain passage si elle est toujours active sur
+  sa source — seuls "Masquer" et "Supprimer" sont garantis durables.
+- **Abonnés** (`/admin/abonnes`) : liste des inscrits, statut, désabonnement
+  manuel.
+- **Tableau de bord** (`/admin`) : compteurs par fraîcheur/domaine/source,
+  statistiques d'abonnés, et deux boutons de déclenchement manuel (scraping,
+  newsletter) qui appellent l'API GitHub Actions `workflow_dispatch` —
+  nécessitent la variable optionnelle `GITHUB_TOKEN` (personal access token
+  *fine-grained*, limité à ce seul dépôt, permission "Actions: Read and
+  write" uniquement).
+
+Authentification par cookie de session signé (table `admin_sessions`,
+créée automatiquement au premier login), pas de compte multi-utilisateur —
+suffisant pour un site géré par une seule personne.
+
+**Colonnes `offres.masque` et `offres.manuel`** : additives, gérées
+UNIQUEMENT par le site (absentes du `UPSERT_SQL` de `db_sync.py`) pour ne
+jamais être écrasées par un run de scraping ; `manuel = TRUE` protège en
+plus la ligne de la purge automatique (`sync()` ne supprime jamais une
+offre ajoutée à la main). Si ces colonnes n'existent pas encore sur la
+base (site déployé avant un premier run de scraping post-mise à jour),
+les exécuter une fois dans le SQL Editor de Supabase :
+```sql
+ALTER TABLE offres ADD COLUMN IF NOT EXISTS masque BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE offres ADD COLUMN IF NOT EXISTS manuel BOOLEAN NOT NULL DEFAULT FALSE;
+```
+
 ## Tests
 
 ```bash
