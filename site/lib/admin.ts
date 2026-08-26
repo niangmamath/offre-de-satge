@@ -59,12 +59,17 @@ export async function login(motDePasse: string): Promise<LoginResult> {
   }
   const pool = getPool();
   if (!pool) return { ok: false, erreur: "Base de données indisponible." };
-  await ensureSchema(pool);
 
-  const token = randomUUID();
-  const expiresAt = new Date(Date.now() + SESSION_DUREE_MS);
-  await pool.query("INSERT INTO admin_sessions (token, expires_at) VALUES ($1, $2)", [token, expiresAt]);
-  return { ok: true, token, expiresAt };
+  try {
+    await ensureSchema(pool);
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + SESSION_DUREE_MS);
+    await pool.query("INSERT INTO admin_sessions (token, expires_at) VALUES ($1, $2)", [token, expiresAt]);
+    return { ok: true, token, expiresAt };
+  } catch (e) {
+    console.error("[admin] échec création de session:", e);
+    return { ok: false, erreur: "Erreur base de données lors de la création de session." };
+  }
 }
 
 export async function logout(token: string): Promise<void> {
