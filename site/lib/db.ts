@@ -1,5 +1,5 @@
-import { Pool } from "pg";
 import { createHash, randomUUID } from "crypto";
+import { getPool } from "./pg";
 
 export type Offre = {
   url: string;
@@ -22,34 +22,6 @@ export type Offre = {
 };
 
 export type OffreAdmin = Offre & { masque: boolean; manuel: boolean };
-
-// Singleton via globalThis : en dev, le rechargement à chaud (HMR) réimporte
-// ce module sans redémarrer le process Node — sans ce garde-fou, chaque
-// rechargement recréerait un pool et finirait par épuiser les connexions.
-const globalForPg = globalThis as unknown as { _pgPool?: Pool };
-
-function getPool(): Pool | null {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  if (!globalForPg._pgPool) {
-    const local = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
-    globalForPg._pgPool = new Pool({
-      connectionString,
-      // Supabase (comme Neon/Vercel Postgres) exige TLS ; une base locale
-      // de dev n'en a pas.
-      ssl: local ? false : { rejectUnauthorized: false },
-      // Chaque instance de fonction serverless Vercel a SON PROPRE process
-      // Node (le singleton globalThis n'aide qu'entre requêtes d'UNE MÊME
-      // instance déjà chaude) : on garde donc peu de connexions par pool
-      // pour ne pas cumuler avec les autres instances. Utiliser l'URL du
-      // "connection pooler" Supabase (port 6543, mode transaction) pour
-      // DATABASE_URL côté site limite encore plus ce risque — voir
-      // Settings → Database → Connection pooling sur Supabase.
-      max: 3,
-    });
-  }
-  return globalForPg._pgPool;
-}
 
 /** null = DATABASE_URL absente (site pas encore relié à une base) — distinct
  * d'une liste vide (base connectée mais aucune offre convenable pour l'instant). */

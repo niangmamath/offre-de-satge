@@ -1,25 +1,7 @@
 import { randomUUID } from "crypto";
-import { Pool } from "pg";
+import type { Pool } from "pg";
 import { cookies } from "next/headers";
-
-// Pool séparé de lib/db.ts / lib/abonnes.ts -- même raison que ces deux
-// derniers (isoler les chemins d'écriture peu fréquents des lectures à fort
-// trafic du site public).
-const globalForPg = globalThis as unknown as { _pgPoolAdmin?: Pool };
-
-function getPool(): Pool | null {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  if (!globalForPg._pgPoolAdmin) {
-    const local = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
-    globalForPg._pgPoolAdmin = new Pool({
-      connectionString,
-      ssl: local ? false : { rejectUnauthorized: false },
-      max: 2,
-    });
-  }
-  return globalForPg._pgPoolAdmin;
-}
+import { getPool } from "./pg";
 
 const TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS admin_sessions (

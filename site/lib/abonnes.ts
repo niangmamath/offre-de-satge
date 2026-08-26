@@ -1,25 +1,7 @@
 import { randomUUID } from "crypto";
-import { Pool } from "pg";
+import type { Pool } from "pg";
 import { DOMAINES_NEWSLETTER } from "./newsletter-domaines";
-
-const globalForPg = globalThis as unknown as { _pgPoolAbonnes?: Pool };
-
-// Pool séparé de celui de lib/db.ts (offres, lecture seule, beaucoup de
-// trafic) : l'inscription est un chemin d'écriture, peu fréquent — les
-// isoler évite qu'un pic sur l'un affecte les connexions de l'autre.
-function getPool(): Pool | null {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  if (!globalForPg._pgPoolAbonnes) {
-    const local = connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
-    globalForPg._pgPoolAbonnes = new Pool({
-      connectionString,
-      ssl: local ? false : { rejectUnauthorized: false },
-      max: 2,
-    });
-  }
-  return globalForPg._pgPoolAbonnes;
-}
+import { getPool } from "./pg";
 
 const TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS abonnes (
