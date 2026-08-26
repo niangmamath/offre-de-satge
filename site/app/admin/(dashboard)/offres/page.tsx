@@ -21,6 +21,7 @@ export default async function AdminOffresPage() {
           </p>
         </div>
         <Link
+          prefetch={false}
           href="/admin/offres/nouvelle"
           className="shrink-0 rounded-full bg-indigo-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800"
         >
@@ -45,6 +46,7 @@ export default async function AdminOffresPage() {
               <tr key={o.url} className={o.masque ? "bg-gray-50 text-gray-400" : ""}>
                 <td className="px-4 py-2.5">
                   <Link
+                    prefetch={false}
                     href={`/admin/offres/modifier?url=${encodeURIComponent(o.url)}`}
                     className="font-medium text-gray-900 hover:text-indigo-700"
                   >
