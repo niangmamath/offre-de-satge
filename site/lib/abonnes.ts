@@ -125,7 +125,7 @@ export async function subscribe(
 }
 
 export type VerifyResult =
-  | { status: "ok" }
+  | { status: "ok"; dejaConfirme: boolean; token: string }
   | { status: "wrong_code" }
   | { status: "expired" }
   | { status: "too_many_attempts" }
@@ -142,11 +142,13 @@ export async function verifyOtp(emailRaw: string, codeRaw: string): Promise<Veri
 
   const res = await pool.query<{
     code: string | null; code_expire: string | null; tentatives: number; confirme: boolean;
-  }>("SELECT code, code_expire, tentatives, confirme FROM abonnes WHERE email = $1", [email]);
+    token: string;
+  }>("SELECT code, code_expire, tentatives, confirme, token FROM abonnes WHERE email = $1", [email]);
   if (res.rows.length === 0) return { status: "not_found" };
   const row = res.rows[0];
 
-  if (row.confirme) return { status: "ok" }; // déjà confirmé (double-clic) -> idempotent
+  // déjà confirmé (double-clic) -> idempotent, ne redéclenche jamais le mail de bienvenue
+  if (row.confirme) return { status: "ok", dejaConfirme: true, token: row.token };
 
   if (row.tentatives >= MAX_TENTATIVES) return { status: "too_many_attempts" };
 
@@ -163,7 +165,7 @@ export async function verifyOtp(emailRaw: string, codeRaw: string): Promise<Veri
     "UPDATE abonnes SET confirme = TRUE, code = NULL, code_expire = NULL WHERE email = $1",
     [email]
   );
-  return { status: "ok" };
+  return { status: "ok", dejaConfirme: false, token: row.token };
 }
 
 export async function unsubscribe(token: string): Promise<boolean> {
