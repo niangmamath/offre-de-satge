@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyOtp } from "@/lib/abonnes";
-import { getTransport, fromAddress } from "@/lib/mailer";
+import { getTransport, fromAddress, logoSvg } from "@/lib/mailer";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -15,11 +15,11 @@ async function envoyerBienvenue(email: string, token: string) {
   await transport.sendMail({
     from: fromAddress(),
     to: email,
-    subject: "Bienvenue sur Stages au Maroc 🎓",
+    subject: "Bienvenue sur Stages au Maroc",
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;">
         <div style="background:linear-gradient(135deg,#4338ca,#7c3aed);padding:24px;border-radius:12px 12px 0 0;">
-          <h1 style="color:#fff;margin:0;font-size:22px;">🎓 Bienvenue sur Stages au Maroc !</h1>
+          <h1 style="color:#fff;margin:0;font-size:22px;">${logoSvg("#ffffff")}Bienvenue sur Stages au Maroc !</h1>
         </div>
         <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 12px 12px;">
           <p>Votre inscription est confirmée. Vous recevrez désormais chaque semaine un email avec les nouvelles offres de stage détectées au Maroc, correspondant à vos préférences.</p>

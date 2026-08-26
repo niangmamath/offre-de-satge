@@ -21,7 +21,23 @@ export default function OpengraphImage() {
           textAlign: "center",
         }}
       >
-        <div style={{ fontSize: 110, marginBottom: 12, display: "flex" }}>🎓</div>
+        <svg
+          width="128"
+          height="128"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={1.4}
+          style={{ marginBottom: 12 }}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l9 4.5-9 4.5-9-4.5L12 3z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M6.5 10.2v4.3c0 1.5 2.46 3 5.5 3s5.5-1.5 5.5-3v-4.3"
+          />
+          <path strokeLinecap="round" d="M21 8v6" />
+        </svg>
         <div style={{ fontSize: 76, fontWeight: 700, letterSpacing: -1, display: "flex" }}>
           Stages au Maroc
         </div>

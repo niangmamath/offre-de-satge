@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { subscribe } from "@/lib/abonnes";
-import { getTransport, fromAddress } from "@/lib/mailer";
+import { getTransport, fromAddress, logoSvg } from "@/lib/mailer";
 
 async function envoyerCode(email: string, code: string) {
   const transport = getTransport();
@@ -14,7 +14,7 @@ async function envoyerCode(email: string, code: string) {
     subject: `${code} — votre code de confirmation Stages au Maroc`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;">
-        <h2 style="color:#4338ca;">🎓 Stages au Maroc</h2>
+        <h2 style="color:#4338ca;">${logoSvg("#4338ca")}Stages au Maroc</h2>
         <p>Voici votre code pour confirmer votre inscription à la newsletter (nouvelles offres chaque semaine) :</p>
         <p style="font-size:32px;font-weight:700;letter-spacing:8px;text-align:center;color:#4338ca;margin:20px 0;">${code}</p>
         <p style="color:#666;font-size:13px;">Ce code est valable 15 minutes. Saisissez-le sur la page où vous vous êtes inscrit(e).</p>

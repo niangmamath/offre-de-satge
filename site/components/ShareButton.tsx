@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckIcon } from "@/components/icons";
 
 export default function ShareButton({ titre, url }: { titre: string; url: string }) {
   const [copie, setCopie] = useState(false);
@@ -30,7 +31,10 @@ export default function ShareButton({ titre, url }: { titre: string; url: string
       className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
     >
       {copie ? (
-        "✓ Lien copié !"
+        <>
+          <CheckIcon className="h-4 w-4 text-emerald-600" />
+          Lien copié !
+        </>
       ) : (
         <>
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

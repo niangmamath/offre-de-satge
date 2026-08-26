@@ -45,6 +45,19 @@ MIGRATIONS_SQL = [
 ]
 
 MAX_OFFRES_PAR_MAIL = 8
+
+# Logo "casquette de diplome" en SVG inline -- evite l'emoji, dont le rendu
+# (police systeme) varie trop d'un client mail a l'autre (meme raison que
+# site/lib/mailer.ts:logoSvg(), duplique ici car runtime Python separe).
+LOGO_SVG_BLANC = (
+    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" '
+    'stroke-width="2" style="vertical-align:middle;margin-right:8px;display:inline-block;">'
+    '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3l9 4.5-9 4.5-9-4.5L12 3z"/>'
+    '<path stroke-linecap="round" stroke-linejoin="round" '
+    'd="M6.5 10.2v4.3c0 1.5 2.46 3 5.5 3s5.5-1.5 5.5-3v-4.3"/>'
+    '<path stroke-linecap="round" d="M21 8v6"/>'
+    "</svg>"
+)
 DELAI_ENTRE_ENVOIS_S = 1.5  # pacing best-effort, évite de brusquer le fournisseur SMTP
 
 
@@ -121,7 +134,7 @@ def construire_html(offres, reste, site_url, token, domaine=None):
     return f"""
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#4338ca,#7c3aed);padding:24px;border-radius:12px 12px 0 0;">
-        <h1 style="color:#fff;margin:0;font-size:22px;">🎓 Stages au Maroc</h1>
+        <h1 style="color:#fff;margin:0;font-size:22px;">{LOGO_SVG_BLANC}Stages au Maroc</h1>
         <p style="color:#e0e7ff;margin:6px 0 0;font-size:14px;">{sous_titre}</p>
       </div>
       <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 12px 12px;">

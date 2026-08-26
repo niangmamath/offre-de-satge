@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DOMAINES_NEWSLETTER } from "@/lib/newsletter-domaines";
+import { CheckIcon } from "@/components/icons";
 
 type Etape = "email" | "code" | "confirme" | "already";
 const TOUS_DOMAINES = "Tous domaines";
@@ -76,7 +77,12 @@ export default function NewsletterForm() {
   }
 
   if (etape === "confirme" || etape === "already") {
-    return <p className="text-sm font-medium text-emerald-700">✓ {message}</p>;
+    return (
+      <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-emerald-700">
+        <CheckIcon className="h-4 w-4 shrink-0" />
+        {message}
+      </p>
+    );
   }
 
   if (etape === "code") {

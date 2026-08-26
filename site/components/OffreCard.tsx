@@ -1,5 +1,16 @@
 import Link from "next/link";
 import type { Offre } from "@/lib/db";
+import {
+  ChartUpIcon,
+  CoinIcon,
+  GearIcon,
+  MedicalIcon,
+  MonitorIcon,
+  ScaleIcon,
+  SparkleIcon,
+  TruckIcon,
+  UsersIcon,
+} from "@/components/icons";
 
 const FENETRE_STYLE: Record<string, { badge: string; accent: string }> = {
   NOUVEAU: { badge: "bg-emerald-100 text-emerald-800 ring-emerald-600/20", accent: "bg-emerald-500" },
@@ -10,22 +21,22 @@ const FENETRE_STYLE: Record<string, { badge: string; accent: string }> = {
   INCONNUE: { badge: "bg-gray-50 text-gray-500 ring-gray-400/20", accent: "bg-gray-200" },
 };
 
-const DOMAINE_ICON: Record<string, string> = {
-  "Informatique / Data": "💻",
-  "Ingénierie / Industrie": "⚙️",
-  "Logistique / Transport / Achats": "🚚",
-  "Finance / Comptabilité": "💰",
-  "Commerce / Marketing / Vente": "📈",
-  RH: "🤝",
-  Juridique: "⚖️",
-  Santé: "🩺",
-  Autre: "✨",
+const DOMAINE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  "Informatique / Data": MonitorIcon,
+  "Ingénierie / Industrie": GearIcon,
+  "Logistique / Transport / Achats": TruckIcon,
+  "Finance / Comptabilité": CoinIcon,
+  "Commerce / Marketing / Vente": ChartUpIcon,
+  RH: UsersIcon,
+  Juridique: ScaleIcon,
+  Santé: MedicalIcon,
+  Autre: SparkleIcon,
 };
 
 function Badge({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${className}`}
     >
       {children}
     </span>
@@ -42,7 +53,7 @@ function formatDate(iso: string | null): string {
 export default function OffreCard({ offre }: { offre: Offre }) {
   const style = FENETRE_STYLE[offre.fenetre] ?? FENETRE_STYLE.INCONNUE;
   const estNouvelle = offre.fenetre === "NOUVEAU";
-  const icone = DOMAINE_ICON[offre.domaine ?? ""] ?? DOMAINE_ICON.Autre;
+  const Icone = DOMAINE_ICON[offre.domaine ?? ""] ?? DOMAINE_ICON.Autre;
 
   return (
     <Link
@@ -53,9 +64,7 @@ export default function OffreCard({ offre }: { offre: Offre }) {
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2">
-          <span className="text-lg leading-none" aria-hidden>
-            {icone}
-          </span>
+          <Icone className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
           <h3 className="text-sm font-semibold text-gray-900 group-hover:text-indigo-700">
             {offre.poste}
           </h3>
@@ -86,7 +95,8 @@ export default function OffreCard({ offre }: { offre: Offre }) {
         ) : null}
         {offre.indemnite ? (
           <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
-            💰 {offre.indemnite}
+            <CoinIcon className="h-3 w-3" />
+            {offre.indemnite}
           </Badge>
         ) : null}
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Offre } from "@/lib/db";
 import OffreCard from "./OffreCard";
+import { CapIcon, MailboxIcon } from "@/components/icons";
 
 const TOUS = "Tous";
 const PAR_PAGE = 30;
@@ -102,8 +103,9 @@ export default function OffresExplorer({
         />
         <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-              🎓 Stages au Maroc
+            <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+              <CapIcon className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
+              Stages au Maroc
             </h1>
             <p className="text-xs text-indigo-200">Mis à jour : {formatMaj(derniereMaj)}</p>
           </div>
@@ -137,7 +139,8 @@ export default function OffresExplorer({
               href="#newsletter"
               className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/30 transition hover:bg-white/25 sm:text-sm"
             >
-              📬 Recevoir les nouvelles offres par email
+              <MailboxIcon className="h-4 w-4 shrink-0" />
+              Recevoir les nouvelles offres par email
             </a>
           </div>
         </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getOffreBySlug } from "@/lib/db";
 import ShareButton from "@/components/ShareButton";
+import { CoinIcon } from "@/components/icons";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -21,7 +22,7 @@ const FENETRE_STYLE: Record<string, string> = {
 function Badge({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${className}`}
     >
       {children}
     </span>
@@ -129,7 +130,8 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
             ) : null}
             {offre.indemnite ? (
               <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
-                💰 {offre.indemnite}
+                <CoinIcon className="h-3.5 w-3.5" />
+                {offre.indemnite}
               </Badge>
             ) : null}
           </div>

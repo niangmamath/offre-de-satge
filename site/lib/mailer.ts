@@ -32,3 +32,11 @@ export function getTransport(): Transporter | null {
 export function fromAddress(): string {
   return process.env.FROM_EMAIL || process.env.SMTP_USER || "no-reply@example.com";
 }
+
+/** Logo "casquette de diplômé" en SVG inline pour les emails -- évite l'emoji
+ * 🎓, dont le rendu (police système) varie trop d'un client mail à l'autre
+ * pour un résultat cohérent. `color` doit correspondre à la couleur du texte
+ * du titre à côté (blanc sur fond dégradé, indigo sur fond blanc). */
+export function logoSvg(color: string, sizePx = 26): string {
+  return `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" style="vertical-align:middle;margin-right:8px;display:inline-block;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l9 4.5-9 4.5-9-4.5L12 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 10.2v4.3c0 1.5 2.46 3 5.5 3s5.5-1.5 5.5-3v-4.3"/><path stroke-linecap="round" d="M21 8v6"/></svg>`;
+}

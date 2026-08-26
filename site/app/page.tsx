@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { getDerniereMaj, getOffres, type Offre } from "@/lib/db";
 import OffresExplorer from "@/components/OffresExplorer";
 import NewsletterForm from "@/components/NewsletterForm";
+import { CapIcon, MailboxIcon } from "@/components/icons";
 
 // Liste simple, pas de JobPosting ici : Google recommande UN JobPosting sur
 // la page dédiée à CETTE offre (cf. app/offre/[slug]/page.tsx), pas groupés
@@ -37,7 +38,10 @@ export default async function Home() {
       {offres === null ? (
         <>
           <header className="bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-700 px-4 py-8 sm:px-6">
-            <h1 className="text-2xl font-extrabold text-white sm:text-3xl">🎓 Stages au Maroc</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-extrabold text-white sm:text-3xl">
+              <CapIcon className="h-6 w-6 shrink-0" />
+              Stages au Maroc
+            </h1>
           </header>
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
@@ -56,8 +60,9 @@ export default async function Home() {
           id="newsletter"
           className="mx-auto flex max-w-6xl scroll-mt-6 flex-col items-center gap-3 px-4 py-10 text-center sm:px-6"
         >
-          <p className="text-sm font-semibold text-gray-800">
-            📬 Recevez les nouvelles offres par email, chaque semaine
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+            <MailboxIcon className="h-4 w-4 shrink-0 text-indigo-600" />
+            Recevez les nouvelles offres par email, chaque semaine
           </p>
           <NewsletterForm />
         </div>
