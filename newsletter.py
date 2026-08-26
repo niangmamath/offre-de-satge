@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS abonnes (
 )
 """
 
+# Migration additive idempotente (même pattern que db_sync.py) : la table
+# peut déjà exister depuis avant l'ajout de la préférence de domaine, et ce
+# script peut tourner (GitHub Actions) indépendamment du site Next.js qui
+# gère sa propre migration côté site/lib/abonnes.ts sur la même colonne.
+MIGRATIONS_SQL = [
+    "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS domaine_prefere TEXT",
+]
+
 MAX_OFFRES_PAR_MAIL = 8
 DELAI_ENTRE_ENVOIS_S = 1.5  # pacing best-effort, évite de brusquer le fournisseur SMTP
 
@@ -54,27 +62,50 @@ def _env(nom, defaut=None):
     return v if v else defaut
 
 
-def offres_recentes(cur, jours=7, limite=MAX_OFFRES_PAR_MAIL):
-    cur.execute(
-        """
-        SELECT poste, entite, ville, slug FROM offres
-        WHERE premiere_detection >= now() - (%s || ' days')::interval
-        ORDER BY premiere_detection DESC
-        """,
-        (str(jours),),
-    )
+def offres_recentes(cur, jours=7, limite=MAX_OFFRES_PAR_MAIL, domaine=None):
+    """domaine=None -> tous domaines confondus (abonnés sans préférence)."""
+    if domaine:
+        cur.execute(
+            """
+            SELECT poste, entite, ville, slug FROM offres
+            WHERE premiere_detection >= now() - (%s || ' days')::interval
+              AND domaine = %s
+            ORDER BY premiere_detection DESC
+            """,
+            (str(jours), domaine),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT poste, entite, ville, slug FROM offres
+            WHERE premiere_detection >= now() - (%s || ' days')::interval
+            ORDER BY premiere_detection DESC
+            """,
+            (str(jours),),
+        )
     rows = cur.fetchall()
     return rows[:limite], max(0, len(rows) - limite)
 
 
 def abonnes_actifs(cur):
     cur.execute(
-        "SELECT id, email, token FROM abonnes WHERE confirme = TRUE AND actif = TRUE"
+        "SELECT id, email, token, domaine_prefere FROM abonnes "
+        "WHERE confirme = TRUE AND actif = TRUE"
     )
     return cur.fetchall()
 
 
-def construire_html(offres, reste, site_url, token):
+def grouper_par_domaine(abonnes):
+    """{domaine_prefere (ou None = tous domaines) : [abonnés]}. Ne calculer
+    la liste d'offres correspondante qu'UNE FOIS par groupe, pas par
+    abonné (évite de refaire la même requête des dizaines de fois)."""
+    groupes = {}
+    for a in abonnes:
+        groupes.setdefault(a[3], []).append(a)
+    return groupes
+
+
+def construire_html(offres, reste, site_url, token, domaine=None):
     lignes = "".join(
         f"""<tr><td style="padding:12px 0;border-bottom:1px solid #eee;">
               <a href="{site_url}/offre/{slug}" style="color:#4338ca;font-weight:600;text-decoration:none;font-size:15px;">{poste}</a><br>
@@ -86,11 +117,12 @@ def construire_html(offres, reste, site_url, token):
         f'<p style="color:#666;font-size:13px;">…et {reste} autre(s) offre(s) sur le site.</p>'
         if reste else ""
     )
+    sous_titre = f"Les nouvelles offres · {domaine}" if domaine else "Les nouvelles offres de la semaine"
     return f"""
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#4338ca,#7c3aed);padding:24px;border-radius:12px 12px 0 0;">
         <h1 style="color:#fff;margin:0;font-size:22px;">🎓 Stages au Maroc</h1>
-        <p style="color:#e0e7ff;margin:6px 0 0;font-size:14px;">Les nouvelles offres de la semaine</p>
+        <p style="color:#e0e7ff;margin:6px 0 0;font-size:14px;">{sous_titre}</p>
       </div>
       <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 12px 12px;">
         <table style="width:100%;border-collapse:collapse;">{lignes}</table>
@@ -125,51 +157,41 @@ def _smtp_connect():
     return smtp, from_email
 
 
-def envoyer(cur, conn, offres, reste, site_url, dry_run=False):
-    abonnes = abonnes_actifs(cur)
-    if not abonnes:
-        print("  [newsletter] aucun abonné confirmé actif — rien à envoyer.")
-        return 0
-
+def envoyer_groupe(smtp, from_email, cur, conn, abonnes, offres, reste, site_url,
+                    domaine=None, dry_run=False):
+    """abonnes : lignes (id, email, token, domaine_prefere) d'UN SEUL groupe
+    (déjà filtré par grouper_par_domaine) -- reçoivent toutes le MÊME digest
+    (déjà calculé pour ce groupe précis par l'appelant)."""
+    label = domaine or "tous domaines"
     if dry_run:
-        print(f"  [newsletter] DRY-RUN : {len(abonnes)} abonné(s) recevraient "
+        print(f"  [newsletter] DRY-RUN [{label}] : {len(abonnes)} abonné(s) recevraient "
               f"{len(offres)} offre(s) (+{reste} de plus).")
-        print(construire_html(offres, reste, site_url, "TOKEN_EXEMPLE"))
+        print(construire_html(offres, reste, site_url, "TOKEN_EXEMPLE", domaine))
         return 0
-
-    connexion = _smtp_connect()
-    if not connexion:
-        print("  [newsletter] variables SMTP absentes (SMTP_SERVER/PORT/USER/PASS) "
-              "— envoi ignoré.")
-        return 0
-    smtp, from_email = connexion
 
     envoyes = 0
-    try:
-        for abonne_id, email, token in abonnes:
-            html = construire_html(offres, reste, site_url, token)
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = f"{len(offres)} nouvelle(s) offre(s) de stage au Maroc"
-            msg["From"] = from_email
-            msg["To"] = email
-            msg.attach(MIMEText(html, "html", "utf-8"))
-            try:
-                smtp.sendmail(from_email, [email], msg.as_string())
-                cur.execute(
-                    "UPDATE abonnes SET dernier_envoi = now() WHERE id = %s",
-                    (abonne_id,))
-                envoyes += 1
-            except Exception as e:
-                print(f"  [newsletter] échec envoi à {email} : {e}")
-            time.sleep(DELAI_ENTRE_ENVOIS_S)
-        conn.commit()
-    finally:
+    for abonne_id, email, token, _ in abonnes:
+        html = construire_html(offres, reste, site_url, token, domaine)
+        sujet = f"{len(offres)} nouvelle(s) offre(s) de stage au Maroc"
+        if domaine:
+            sujet += f" · {domaine}"
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = sujet
+        msg["From"] = from_email
+        msg["To"] = email
+        msg.attach(MIMEText(html, "html", "utf-8"))
         try:
-            smtp.quit()
-        except Exception:
-            pass
+            smtp.sendmail(from_email, [email], msg.as_string())
+            cur.execute(
+                "UPDATE abonnes SET dernier_envoi = now() WHERE id = %s",
+                (abonne_id,))
+            envoyes += 1
+        except Exception as e:
+            print(f"  [newsletter] échec envoi à {email} : {e}")
+        time.sleep(DELAI_ENTRE_ENVOIS_S)
+    conn.commit()
 
-    print(f"  [newsletter] {envoyes}/{len(abonnes)} email(s) envoyé(s).")
+    print(f"  [newsletter] [{label}] {envoyes}/{len(abonnes)} email(s) envoyé(s).")
     return envoyes
 
 
@@ -191,12 +213,45 @@ def main():
     try:
         with conn.cursor() as cur:
             cur.execute(TABLE_SQL)
+            for migration in MIGRATIONS_SQL:
+                cur.execute(migration)
             conn.commit()
-            offres, reste = offres_recentes(cur)
-            if not offres:
-                print("  [newsletter] aucune offre neuve depuis 1 semaine — rien envoyé.")
+
+            abonnes = abonnes_actifs(cur)
+            if not abonnes:
+                print("  [newsletter] aucun abonné confirmé actif — rien à envoyer.")
                 return
-            envoyer(cur, conn, offres, reste, site_url, dry_run=dry_run)
+
+            connexion = None if dry_run else _smtp_connect()
+            if not dry_run and not connexion:
+                print("  [newsletter] variables SMTP absentes (SMTP_SERVER/PORT/USER/PASS) "
+                      "— envoi ignoré.")
+                return
+            smtp, from_email = connexion if connexion else (None, None)
+
+            try:
+                total = 0
+                # Un groupe par préférence de domaine (None = tous domaines
+                # confondus) : la requête d'offres n'est faite qu'UNE FOIS par
+                # groupe, pas par abonné.
+                for domaine, groupe in grouper_par_domaine(abonnes).items():
+                    offres, reste = offres_recentes(cur, domaine=domaine)
+                    if not offres:
+                        label = domaine or "tous domaines"
+                        print(f"  [newsletter] [{label}] aucune offre neuve depuis "
+                              f"1 semaine — rien envoyé à ce groupe.")
+                        continue
+                    total += envoyer_groupe(
+                        smtp, from_email, cur, conn, groupe, offres, reste,
+                        site_url, domaine=domaine, dry_run=dry_run)
+                if total == 0 and not dry_run:
+                    print("  [newsletter] aucune offre neuve pour aucun groupe — rien envoyé.")
+            finally:
+                if smtp:
+                    try:
+                        smtp.quit()
+                    except Exception:
+                        pass
     finally:
         conn.close()
 

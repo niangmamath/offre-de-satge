@@ -59,6 +59,12 @@ Pour ajouter une source : écrire un collecteur dans `sources.py` (même
 contrat que `collect_rekrute` — liste de dicts avec les mêmes clés que les
 annonces LinkedIn) et l'ajouter au registre `COLLECTORS`.
 
+**Déduplication inter-sources** : `classifier.dedup_annonces()` fusionne les
+annonces identiques repérées par plusieurs sources (clé : entreprise + titre
+normalisés, insensible aux accents/casse) avant classification, pour éviter
+qu'une même offre postée sur LinkedIn et relayée sur Rekrute/Stagiaires.ma
+n'apparaisse deux fois sur le site.
+
 ## Comment une offre devient « convenable »
 
 Logique dans `classifier.py` (pure, testée, `test_classifier.py`). Une
@@ -101,8 +107,25 @@ juste non affichées).
 
 Application Next.js (App Router, Tailwind) qui affiche les offres
 convenables en direct — filtres par domaine, type de stage, ville,
-recherche texte. Elle ne lit jamais l'Excel : elle interroge une base
+recherche texte, tri (fraîcheur / date) et pagination (30 offres par page,
+bouton "Voir plus"). Elle ne lit jamais l'Excel : elle interroge une base
 **Postgres (Supabase)** alimentée par `db_sync.py` à chaque run du pipeline.
+
+Chaque offre a sa propre page de détail (`/offre/[slug]`) avec les données
+structurées `schema.org/JobPosting` (référencement Google for Jobs), un
+badge indemnité quand la source la précise (actuellement Stagiaires.ma via
+JSON-LD `baseSalary`), et un bouton de partage (`navigator.share()` sur
+mobile, copie du lien en repli sur desktop).
+
+**Référencement (Google Search Console)** : `app/sitemap.ts` et
+`app/robots.ts` exposent déjà `/sitemap.xml` et `/robots.txt` — c'est tout
+ce qui peut être préparé côté code. La soumission elle-même (propriété du
+site, vérification de propriété, dépôt du sitemap) se fait uniquement
+depuis le compte Google du propriétaire du domaine, sur
+[search.google.com/search-console](https://search.google.com/search-console) : ajouter la propriété avec l'URL
+Vercel, vérifier (méthode "balise HTML" ou "enregistrement DNS" si domaine
+personnalisé), puis soumettre `https://<domaine>/sitemap.xml` dans
+Sitemaps. Aucune action possible depuis le dépôt de code pour cette étape.
 
 ```bash
 cd site
@@ -143,18 +166,30 @@ Mise en route :
 
 ## Automatisation cloud (`.github/workflows/scrape.yml`)
 
-Exécute `python stages_maroc.py` sur GitHub Actions (déclenchement manuel
-actif dès maintenant, `cron` quotidien désactivé par défaut tant que le
-secret `DATABASE_URL` n'est pas configuré — cf. commentaires dans le
-fichier). Le cache de scraping (`cache_stages_maroc.json`) est conservé
-entre les runs via `actions/cache`, pour ne pas re-télécharger toutes les
-fiches LinkedIn à chaque exécution.
+Exécute `python stages_maroc.py` sur GitHub Actions, `cron` quotidien actif
+(`0 6 * * *`, 06:00 UTC) en plus du déclenchement manuel. Le cache de
+scraping (`cache_stages_maroc.json`) est conservé entre les runs via
+`actions/cache`, pour ne pas re-télécharger toutes les fiches LinkedIn à
+chaque exécution.
+
+**Alerte en cas d'échec** : si le run échoue (`if: failure()`), un email est
+envoyé automatiquement via `notifier.py` (mêmes secrets SMTP que la
+newsletter, aucune configuration supplémentaire) avec un lien direct vers
+les logs du run — plus besoin d'aller vérifier GitHub Actions manuellement.
+Même mécanisme sur `.github/workflows/newsletter.yml`. Si les secrets SMTP
+sont absents, `notifier.py` dégrade proprement (log, pas de plantage) au
+lieu de faire échouer le step d'alerte lui-même.
 
 ## Newsletter (`newsletter.py` + `.github/workflows/newsletter.yml`)
 
 Digest par email chaque semaine pour les visiteurs inscrits sur le site,
 listant les offres détectées depuis le dernier envoi (jamais de mail vide
-"rien de neuf"). Double opt-in par **code à 6 chiffres** (pas un lien
+"rien de neuf"). À l'inscription, l'abonné peut choisir un **domaine de
+préférence** (Informatique/Data, Finance, RH...) parmi la même taxonomie que
+le classifieur ; le digest est alors filtré sur ce domaine au lieu d'envoyer
+toutes les offres. Un abonné par groupe de préférence reçoit un seul email
+par envoi — le calcul des offres à inclure n'est fait qu'une fois par
+groupe, pas par abonné. Double opt-in par **code à 6 chiffres** (pas un lien
 magique — un lien cliqué depuis un client mail peut être bloqué par une
 protection d'accès ou invalidé par un scanner anti-spam qui le "clique"
 avant l'utilisateur ; un code saisi sur une page déjà chargée n'a pas ce

@@ -27,7 +27,7 @@ async function envoyerCode(email: string, code: string) {
 // automatiquement par la plupart des bots de spam -> on ignore silencieusement
 // sans révéler que c'est un piège.
 export async function POST(request: Request) {
-  let body: { email?: string; site_web?: string };
+  let body: { email?: string; site_web?: string; domaine?: string };
   try {
     body = await request.json();
   } catch {
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email requis" }, { status: 400 });
   }
 
-  const result = await subscribe(email);
+  const result = await subscribe(email, body.domaine);
 
   switch (result.status) {
     case "invalid_email":

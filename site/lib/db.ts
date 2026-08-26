@@ -15,6 +15,7 @@ export type Offre = {
   age_jours: number | null;
   fenetre: string;
   candidats: number | null;
+  indemnite: string | null;
   premiere_detection: string;
   derniere_verification: string;
 };
@@ -55,7 +56,7 @@ export async function getOffres(): Promise<Offre[] | null> {
   const { rows } = await pool.query<Offre>(
     `SELECT url, slug, poste, entite, ville, description, domaine, type_stage,
             duree, source, date_pub_iso, age_jours, fenetre, candidats,
-            premiere_detection, derniere_verification
+            indemnite, premiere_detection, derniere_verification
      FROM offres
      ORDER BY
        CASE fenetre
@@ -79,7 +80,7 @@ export async function getOffreBySlug(slug: string): Promise<Offre | null> {
   const { rows } = await pool.query<Offre>(
     `SELECT url, slug, poste, entite, ville, description, domaine, type_stage,
             duree, source, date_pub_iso, age_jours, fenetre, candidats,
-            premiere_detection, derniere_verification
+            indemnite, premiere_detection, derniere_verification
      FROM offres WHERE slug = $1 LIMIT 1`,
     [slug]
   );

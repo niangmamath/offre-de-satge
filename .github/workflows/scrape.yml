@@ -63,6 +63,15 @@ jobs:
           path: cache_stages_maroc.json
           key: stages-maroc-scrape-cache-${{ github.run_id }}
 
-      - name: Journaux en cas d'échec
+      - name: Alerte par email en cas d'échec
         if: failure()
-        run: echo "Le run a échoué — voir les logs de l'étape précédente pour le détail."
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+        run: >
+          python notifier.py
+          "Echec du scraping - Stages au Maroc"
+          "Le run programme le $(date -u +'%Y-%m-%d %H:%M UTC') a echoue. Voir : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

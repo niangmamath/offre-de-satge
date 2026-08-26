@@ -319,6 +319,31 @@ class TestDedupAndSort(unittest.TestCase):
         out = C.dedup_annonces([a1, a2])
         self.assertEqual(len(out), 1)
 
+    def test_dedup_entre_sources_differentes(self):
+        """Même offre postée à la fois sur LinkedIn et Rekrute/Stagiaires.ma
+        -> le texte diffère presque toujours d'une source à l'autre, le
+        dédoublonnage ne doit PAS se fier au texte."""
+        linkedin = _annonce(
+            poste="Stage PFE - Data Analyst", entite="TechCorp",
+            url="https://linkedin.com/jobs/view/123",
+            texte="Description rédigée par LinkedIn, format long.",
+            source="LinkedIn")
+        rekrute = _annonce(
+            poste="Stage PFE - Data Analyst", entite="TechCorp",
+            url="https://rekrute.com/offre-emploi-456.html",
+            texte="Texte totalement différent : secteur, fonction, niveau d'étude...",
+            source="Rekrute.com")
+        out = C.dedup_annonces([linkedin, rekrute])
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["source"], "LinkedIn")  # 1re occurrence gagne
+
+    def test_pas_de_fusion_entre_entreprises_differentes(self):
+        a1 = _annonce(poste="Stagiaire RH", entite="ACME")
+        a2 = _annonce(poste="Stagiaire RH", entite="Autre Société",
+                       url="https://example.com/offre-2")
+        out = C.dedup_annonces([a1, a2])
+        self.assertEqual(len(out), 2)
+
     def test_classify_all_tri_convenables_dabord(self):
         vieux_convenable = _annonce(
             poste="Stagiaire A", url="https://example.com/a",

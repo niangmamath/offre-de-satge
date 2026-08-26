@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { DOMAINES_NEWSLETTER } from "@/lib/newsletter-domaines";
 
 type Etape = "email" | "code" | "confirme" | "already";
+const TOUS_DOMAINES = "Tous domaines";
 
 export default function NewsletterForm() {
   const [etape, setEtape] = useState<Etape>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [domaine, setDomaine] = useState(TOUS_DOMAINES);
   const [honeypot, setHoneypot] = useState(""); // doit rester vide (piège à bots)
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -21,7 +24,11 @@ export default function NewsletterForm() {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, site_web: honeypot }),
+        body: JSON.stringify({
+          email,
+          site_web: honeypot,
+          domaine: domaine === TOUS_DOMAINES ? null : domaine,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -112,7 +119,7 @@ export default function NewsletterForm() {
   }
 
   return (
-    <form onSubmit={envoyerEmail} className="flex flex-col items-center gap-2 sm:flex-row">
+    <form onSubmit={envoyerEmail} className="flex flex-col items-center gap-2">
       <input
         type="text"
         name="site_web"
@@ -123,22 +130,36 @@ export default function NewsletterForm() {
         className="absolute -left-[9999px] h-0 w-0"
         aria-hidden="true"
       />
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="votre@email.com"
-        className="w-full rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:w-64"
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:opacity-60 sm:w-auto"
-      >
-        {loading ? "…" : "Recevoir les nouvelles offres"}
-      </button>
-      {erreur ? <p className="text-xs text-red-600 sm:ml-2">{erreur}</p> : null}
+      <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="votre@email.com"
+          className="w-full rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:w-64"
+        />
+        <select
+          value={domaine}
+          onChange={(e) => setDomaine(e.target.value)}
+          className="w-full rounded-full border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:w-auto"
+        >
+          <option value={TOUS_DOMAINES}>Tous domaines</option>
+          {DOMAINES_NEWSLETTER.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:opacity-60 sm:w-auto"
+        >
+          {loading ? "…" : "Recevoir les nouvelles offres"}
+        </button>
+      </div>
+      {erreur ? <p className="text-xs text-red-600">{erreur}</p> : null}
     </form>
   );
 }

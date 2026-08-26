@@ -3,6 +3,11 @@ import { connection } from "next/server";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getOffreBySlug } from "@/lib/db";
+import ShareButton from "@/components/ShareButton";
+
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 const FENETRE_STYLE: Record<string, string> = {
   NOUVEAU: "bg-emerald-100 text-emerald-800 ring-emerald-600/20",
@@ -122,6 +127,11 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
             {offre.duree ? (
               <Badge className="bg-gray-50 text-gray-600 ring-gray-400/20">{offre.duree}</Badge>
             ) : null}
+            {offre.indemnite ? (
+              <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+                💰 {offre.indemnite}
+              </Badge>
+            ) : null}
           </div>
 
           {offre.description ? (
@@ -151,6 +161,10 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
               />
             </svg>
           </a>
+
+          <div className="mt-3">
+            <ShareButton titre={offre.poste} url={`${siteUrl}/offre/${offre.slug}`} />
+          </div>
           <p className="mt-2 text-center text-xs text-gray-400">
             Vous quittez Stages au Maroc — la candidature se fait sur le site de l&apos;annonceur ({offre.source}).
           </p>

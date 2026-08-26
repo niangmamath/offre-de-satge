@@ -52,14 +52,22 @@ def normalize_title(title):
 
 
 def dedup_annonces(annonces):
-    """Retire les doublons exacts (même entreprise + même titre normalisé +
-    même début de texte) — les sources renvoient parfois 2 fois la même
-    offre. Conserve l'URL de la première occurrence."""
+    """Retire les doublons — même entreprise + même titre normalisé, y
+    compris ENTRE deux sources différentes (une offre postée à la fois sur
+    LinkedIn et Rekrute.com/Stagiaires.ma ne doit apparaître qu'une fois).
+    Conserve la première occurrence rencontrée (LinkedIn en premier dans
+    l'ordre de collecte habituel, cf. stages_maroc.harvest()).
+
+    Best-effort, comme le _dedup_key de sourcing-regie-banque : ne compare
+    QUE entreprise + titre, pas le texte (qui diffère presque toujours
+    d'une source à l'autre pour une même offre — sinon le dédoublonnage
+    inter-source ne fonctionnerait jamais). Deux offres réellement
+    différentes chez la même entreprise avec un titre très proche
+    pourraient fusionner à tort ; accepté comme compromis."""
     seen, out = set(), []
     for a in annonces:
         key = (strip_accents(a.get("entite", "")).lower().strip(),
-               normalize_title(a.get("poste", "")),
-               (a.get("texte", "") or "")[:150].strip())
+               normalize_title(a.get("poste", "")))
         if key in seen:
             continue
         seen.add(key)

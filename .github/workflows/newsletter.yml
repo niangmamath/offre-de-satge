@@ -52,3 +52,16 @@ jobs:
           else
             python newsletter.py
           fi
+
+      - name: Alerte par email en cas d'échec
+        if: failure()
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+        run: >
+          python notifier.py
+          "Echec de la newsletter - Stages au Maroc"
+          "Le run programme le $(date -u +'%Y-%m-%d %H:%M UTC') a echoue. Voir : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -84,6 +84,11 @@ export default function OffreCard({ offre }: { offre: Offre }) {
         {offre.duree ? (
           <Badge className="bg-gray-50 text-gray-600 ring-gray-400/20">{offre.duree}</Badge>
         ) : null}
+        {offre.indemnite ? (
+          <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+            💰 {offre.indemnite}
+          </Badge>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">

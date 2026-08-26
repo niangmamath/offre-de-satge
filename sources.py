@@ -249,6 +249,8 @@ def _stagiaires_parse_detail(url, html):
         except ValueError:
             pass
 
+    indemnite = _stagiaires_indemnite(data.get("baseSalary"))
+
     return {
         "poste": data.get("title", ""),
         "entite": entite,
@@ -263,7 +265,28 @@ def _stagiaires_parse_detail(url, html):
         "republication": "",
         "open_confirme": True,  # listée au sitemap = considérée active par le site
         "source": "Stagiaires.ma",
+        "indemnite": indemnite,
     }
+
+
+_UNITS = {"MONTH": "mois", "HOUR": "heure", "YEAR": "an", "WEEK": "semaine"}
+
+
+def _stagiaires_indemnite(base_salary):
+    """Formate le champ JSON-LD baseSalary (indemnité de stage, quand
+    connue) en texte affichable, ex. "8000-25000 MAD/mois". Aucune autre
+    source ne fournit cette info -> reste vide ("") pour elles."""
+    if not isinstance(base_salary, dict):
+        return ""
+    devise = base_salary.get("currency") or base_salary.get("priceCurrency") or ""
+    mini = base_salary.get("minPrice")
+    maxi = base_salary.get("maxPrice")
+    unite = _UNITS.get((base_salary.get("unitText") or "").upper(), "")
+    if not (mini or maxi):
+        return ""
+    montant = f"{mini}-{maxi}" if mini and maxi and mini != maxi else str(mini or maxi)
+    suffixe = f"/{unite}" if unite else ""
+    return f"{montant} {devise}{suffixe}".strip()
 
 
 def collect_stagiaires():

@@ -45,17 +45,18 @@ CREATE TABLE IF NOT EXISTS offres (
 MIGRATIONS_SQL = [
     "ALTER TABLE offres ADD COLUMN IF NOT EXISTS slug TEXT",
     "CREATE UNIQUE INDEX IF NOT EXISTS offres_slug_idx ON offres (slug)",
+    "ALTER TABLE offres ADD COLUMN IF NOT EXISTS indemnite TEXT",
 ]
 
 UPSERT_SQL = """
 INSERT INTO offres (
     url, poste, entite, ville, description, domaine, type_stage, duree,
-    source, date_pub_iso, age_jours, fenetre, candidats, slug,
+    source, date_pub_iso, age_jours, fenetre, candidats, slug, indemnite,
     premiere_detection, derniere_verification
 ) VALUES (
     %(url)s, %(poste)s, %(entite)s, %(ville)s, %(description)s, %(domaine)s,
     %(type_stage)s, %(duree)s, %(source)s, %(date_pub_iso)s, %(age_jours)s,
-    %(fenetre)s, %(candidats)s, %(slug)s,
+    %(fenetre)s, %(candidats)s, %(slug)s, %(indemnite)s,
     %(premiere_detection)s, %(derniere_verification)s
 )
 ON CONFLICT (url) DO UPDATE SET
@@ -64,7 +65,7 @@ ON CONFLICT (url) DO UPDATE SET
     type_stage = EXCLUDED.type_stage, duree = EXCLUDED.duree,
     source = EXCLUDED.source, date_pub_iso = EXCLUDED.date_pub_iso,
     age_jours = EXCLUDED.age_jours, fenetre = EXCLUDED.fenetre,
-    candidats = EXCLUDED.candidats,
+    candidats = EXCLUDED.candidats, indemnite = EXCLUDED.indemnite,
     derniere_verification = EXCLUDED.derniere_verification
     -- premiere_detection ET slug volontairement absents de la clause
     -- UPDATE : premiere_detection ne doit jamais être réécrit après
@@ -105,6 +106,7 @@ def _row(a):
         "fenetre": a.get("fenetre", "INCONNUE"),
         "candidats": a.get("nb_candidats_int"),
         "slug": _slug(a["url"], a.get("poste", "")),
+        "indemnite": a.get("indemnite") or "",
         # Les dates d'affichage (dd/mm/YYYY HH:MM, cf. process()) sont
         # reparsées en datetime pour la colonne TIMESTAMPTZ ; à défaut on
         # retombe sur "maintenant" plutôt que de planter tout le run.

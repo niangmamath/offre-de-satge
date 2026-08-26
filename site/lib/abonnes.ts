@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { Pool } from "pg";
+import { DOMAINES_NEWSLETTER } from "./newsletter-domaines";
 
 const globalForPg = globalThis as unknown as { _pgPoolAbonnes?: Pool };
 
@@ -41,6 +42,7 @@ const MIGRATIONS_SQL = [
   "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS code TEXT",
   "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS code_expire TIMESTAMPTZ",
   "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS tentatives INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS domaine_prefere TEXT",
 ];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,13 +67,22 @@ export type SubscribeResult =
   | { status: "invalid_email" }
   | { status: "db_unavailable" };
 
-export async function subscribe(emailRaw: string): Promise<SubscribeResult> {
+/** domainePrefere : null/vide = tous domaines confondus (comportement par
+ * défaut, inchangé). Toujours ré-enregistré même sur une adresse déjà
+ * confirmée -> permet de changer sa préférence sans repasser par un code. */
+export async function subscribe(
+  emailRaw: string,
+  domainePrefere?: string | null
+): Promise<SubscribeResult> {
   const email = emailRaw.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return { status: "invalid_email" };
 
   const pool = getPool();
   if (!pool) return { status: "db_unavailable" };
   await ensureSchema(pool);
+
+  const domaine =
+    domainePrefere && DOMAINES_NEWSLETTER.includes(domainePrefere) ? domainePrefere : null;
 
   const existing = await pool.query<{ confirme: boolean; actif: boolean }>(
     "SELECT confirme, actif FROM abonnes WHERE email = $1",
@@ -83,25 +94,32 @@ export async function subscribe(emailRaw: string): Promise<SubscribeResult> {
 
   if (existing.rows.length > 0) {
     const row = existing.rows[0];
-    if (row.confirme && row.actif) return { status: "already_confirmed" };
+    if (row.confirme && row.actif) {
+      await pool.query("UPDATE abonnes SET domaine_prefere = $2 WHERE email = $1", [email, domaine]);
+      return { status: "already_confirmed" };
+    }
     if (row.confirme && !row.actif) {
       // Déjà confirmé mais désabonné entre-temps -> réactive directement
       // (adresse déjà prouvée une fois), pas besoin d'un nouveau code.
-      await pool.query("UPDATE abonnes SET actif = TRUE WHERE email = $1", [email]);
+      await pool.query(
+        "UPDATE abonnes SET actif = TRUE, domaine_prefere = $2 WHERE email = $1",
+        [email, domaine]
+      );
       return { status: "reactivated" };
     }
     // Jamais confirmé -> nouveau code, tentatives remises à zéro.
     await pool.query(
-      "UPDATE abonnes SET actif = TRUE, code = $2, code_expire = $3, tentatives = 0 WHERE email = $1",
-      [email, code, expire]
+      `UPDATE abonnes SET actif = TRUE, code = $2, code_expire = $3, tentatives = 0,
+              domaine_prefere = $4 WHERE email = $1`,
+      [email, code, expire, domaine]
     );
     return { status: "resent", code };
   }
 
   const token = randomUUID(); // désabonnement uniquement, jamais affiché à l'inscription
   await pool.query(
-    "INSERT INTO abonnes (email, token, code, code_expire) VALUES ($1, $2, $3, $4)",
-    [email, token, code, expire]
+    "INSERT INTO abonnes (email, token, code, code_expire, domaine_prefere) VALUES ($1, $2, $3, $4, $5)",
+    [email, token, code, expire, domaine]
   );
   return { status: "created", code };
 }
