@@ -166,11 +166,24 @@ Mise en route :
 
 ## Automatisation cloud (`.github/workflows/scrape.yml`)
 
-Exécute `python stages_maroc.py` sur GitHub Actions, `cron` quotidien actif
-(`0 6 * * *`, 06:00 UTC) en plus du déclenchement manuel. Le cache de
-scraping (`cache_stages_maroc.json`) est conservé entre les runs via
-`actions/cache`, pour ne pas re-télécharger toutes les fiches LinkedIn à
-chaque exécution.
+Exécute `python stages_maroc.py` sur GitHub Actions. **Déclenché par Vercel
+Cron** (`site/vercel.json` → `/api/cron/scrape`, 06:00 UTC), pas par le
+`schedule` natif de GitHub Actions : ce dernier s'est révélé peu fiable en
+pratique (retards de plusieurs heures, runs sautés lors d'incidents sur la
+plateforme GitHub fin août 2026) — GitHub documente lui-même ce
+déclencheur comme "best-effort", sans garantie d'horaire. Vercel Cron
+appelle l'API GitHub (`workflow_dispatch`) à l'heure prévue ; le travail
+long (jusqu'à ~2h) continue de tourner sur GitHub Actions, hors des limites
+de durée des fonctions serverless Vercel. Déclenchement manuel toujours
+possible (`workflow_dispatch`, bouton dans `/admin` ou `gh workflow run`).
+Le cache de scraping (`cache_stages_maroc.json`) est conservé entre les
+runs via `actions/cache`, pour ne pas re-télécharger toutes les fiches
+LinkedIn à chaque exécution.
+
+Nécessite `GITHUB_TOKEN` et `CRON_SECRET` en variables d'environnement
+Vercel (voir section Administration ci-dessous) — sans eux, Vercel Cron
+appelle bien la route à l'heure dite mais celle-ci refuse de déclencher
+le workflow.
 
 **Alerte en cas d'échec** : si le run échoue (`if: failure()`), un email est
 envoyé automatiquement via `notifier.py` (mêmes secrets SMTP que la
@@ -216,10 +229,10 @@ Variables à renseigner aux **deux endroits** (mêmes valeurs) :
 | `FROM_EMAIL` | Vercel + secret GitHub Actions | adresse affichée comme expéditeur |
 | `SITE_URL` | secret GitHub Actions uniquement | URL réelle du site déployé (liens absolus dans le digest) |
 
-Cron actif (`0 8 * * 1`, chaque lundi 08:00 UTC) dans
-`.github/workflows/newsletter.yml`, validé par plusieurs runs manuels avant
-activation — même précaution que pour `scrape.yml`. Option `dry_run`
-disponible sur *Run workflow* pour tester sans envoyer aucun email.
+Déclenché chaque lundi 08:00 UTC par **Vercel Cron** (`/api/cron/newsletter`),
+même raison que `scrape.yml` (voir section Automatisation cloud ci-dessus).
+Option `dry_run` disponible sur *Run workflow* (`gh workflow run
+newsletter.yml -f dry_run=true`) pour tester sans envoyer aucun email.
 
 ## Administration (`site/app/admin`)
 
@@ -235,10 +248,17 @@ Vercel) pour gérer le site sans toucher à la base à la main :
   manuel.
 - **Tableau de bord** (`/admin`) : compteurs par fraîcheur/domaine/source,
   statistiques d'abonnés, et deux boutons de déclenchement manuel (scraping,
-  newsletter) qui appellent l'API GitHub Actions `workflow_dispatch` —
-  nécessitent la variable optionnelle `GITHUB_TOKEN` (personal access token
+  newsletter) qui appellent l'API GitHub Actions `workflow_dispatch` via
+  `site/lib/github-dispatch.ts` — la même fonction qu'utilisent
+  `/api/cron/scrape` et `/api/cron/newsletter` (Vercel Cron, cf. section
+  Automatisation cloud). Nécessite `GITHUB_TOKEN` (personal access token
   *fine-grained*, limité à ce seul dépôt, permission "Actions: Read and
-  write" uniquement).
+  write" uniquement) — **obligatoire**, pas seulement pour ce bouton mais
+  aussi pour que le déclenchement automatique quotidien/hebdomadaire
+  fonctionne. `CRON_SECRET` (chaîne aléatoire d'au moins 16 caractères)
+  protège les routes `/api/cron/*` : Vercel l'envoie automatiquement en
+  en-tête `Authorization` à l'heure programmée, personne d'autre ne peut
+  déclencher ces routes sans le connaître.
 
 Authentification par cookie de session signé (table `admin_sessions`,
 créée automatiquement au premier login), pas de compte multi-utilisateur —

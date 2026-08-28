@@ -1,14 +1,15 @@
 name: Scraping stages Maroc
 
-# Cron actif : run automatique tous les jours à 06:00 UTC (≈ 07:00 heure
-# Maroc en hiver, 08:00 en été). DATABASE_URL est configuré (secret GitHub
-# Actions, chaîne de connexion Supabase directe port 5432 — le "pooler"
-# port 6543 est pour le site Vercel, pas nécessaire ici pour un run
-# séquentiel unique) et le workflow a déjà été validé par plusieurs runs
-# manuels réussis avant activation.
+# Déclenchement quotidien géré par VERCEL CRON (site/vercel.json ->
+# /api/cron/scrape), pas par le "schedule" natif de GitHub Actions : ce
+# dernier s'est révélé peu fiable en pratique (retards de plusieurs heures,
+# runs sautés lors d'incidents sur la plateforme GitHub, cf. 26-28/08/2026)
+# -- doc GitHub elle-même : "schedule" est best-effort, pas garanti.
+# Vercel Cron appelle l'API GitHub (workflow_dispatch) à l'heure prévue ;
+# le travail long (jusqu'à ~2h) continue de tourner ici, hors des limites
+# de durée des fonctions serverless Vercel. DATABASE_URL est configuré
+# (secret GitHub Actions, connexion directe Supabase port 5432).
 on:
-  schedule:
-    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 jobs:

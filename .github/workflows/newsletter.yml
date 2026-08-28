@@ -1,14 +1,13 @@
 name: Newsletter stages Maroc
 
-# Cron actif : envoi automatique chaque LUNDI a 08:00 UTC (= 09:00 heure
-# Maroc en hiver, 10:00 en ete). Secrets deja configures sur ce depot
-# (DATABASE_URL, SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASS, FROM_EMAIL,
-# SITE_URL) et le workflow a ete valide par plusieurs runs manuels reussis
-# avant activation. newsletter.py n'envoie de toute facon rien si aucune
-# offre n'a ete detectee depuis le dernier passage (pas de mail vide).
+# Declenchement hebdomadaire gere par VERCEL CRON (site/vercel.json ->
+# /api/cron/newsletter), pas par le "schedule" natif de GitHub Actions --
+# voir le commentaire equivalent dans scrape.yml (schedule GitHub best-effort,
+# retards/oublis constates fin aout 2026). Secrets deja configures sur ce
+# depot (DATABASE_URL, SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASS,
+# FROM_EMAIL, SITE_URL). newsletter.py n'envoie de toute facon rien si
+# aucune offre n'a ete detectee depuis le dernier passage (pas de mail vide).
 on:
-  schedule:
-    - cron: "0 8 * * 1"
   workflow_dispatch:
     inputs:
       dry_run:
