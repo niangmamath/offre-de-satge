@@ -23,6 +23,7 @@ Réglages rapides via variables d'environnement (facultatif) :
     STG_QUERY_LIMIT   limite le nb de requêtes LinkedIn (0 = toutes)
     STG_FRESH_DAYS    fenêtre de la passe fraîcheur     (défaut 7 j, 0 = off)
     STG_SIMILAR_SEEDS graines pour "offres similaires"  (défaut 20, 0 = off)
+    STG_BUDGET_MIN    budget temps du scraping LinkedIn (défaut 130 min, 0 = illimité)
 
 Dépendances : pip install requests beautifulsoup4 lxml openpyxl
 """
@@ -72,6 +73,17 @@ QUERY_LIMIT = int(os.getenv("STG_QUERY_LIMIT", "0"))
 SIMILAR_SEEDS = int(os.getenv("STG_SIMILAR_SEEDS", "20"))
 FRESH_DAYS = int(os.getenv("STG_FRESH_DAYS", "7"))
 SLEEP_RANGE = (1.6, 3.4)
+# Depuis mi-octobre 2026, LinkedIn renvoie beaucoup plus de 429 aux runners
+# GitHub : les pauses de rate limit ont fait dépasser le timeout de 180 min
+# du workflow (job annulé => ni base de données ni cache mis à jour). Passé
+# ce budget, on arrête d'interroger LinkedIn et on termine le pipeline avec
+# ce qui a déjà été collecté.
+BUDGET_MIN = float(os.getenv("STG_BUDGET_MIN", "130"))
+_DEADLINE = time.monotonic() + BUDGET_MIN * 60 if BUDGET_MIN else None
+
+
+def _budget_epuise(rab_min=0):
+    return _DEADLINE is not None and time.monotonic() > _DEADLINE + rab_min * 60
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -399,31 +411,46 @@ def harvest():
 
     queries = QUERIES[:QUERY_LIMIT] if QUERY_LIMIT else QUERIES
 
+    # Ordre (localisation, requête) mélangé de façon stable pour la journée :
+    # si le budget temps coupe la collecte, ce ne sont pas toujours les mêmes
+    # combinaisons (Oujda, "Maroc"...) qui sont sacrifiées d'un jour à l'autre.
+    paires = [(loc, q) for loc in LOCATIONS for q in queries]
+    random.Random(dt.date.today().isoformat()).shuffle(paires)
+
     # 1) LinkedIn
     raw = {}
-    for loc in LOCATIONS:
-        for q in queries:
-            print(f"  · LinkedIn '{q}' @ {loc}")
-            for c in search_cards(q, loc, PAGES_PER_QUERY):
-                raw.setdefault(c["id"], c)
+    faites = 0
+    for loc, q in paires:
+        if _budget_epuise():
+            break
+        print(f"  · LinkedIn '{q}' @ {loc}")
+        for c in search_cards(q, loc, PAGES_PER_QUERY):
+            raw.setdefault(c["id"], c)
+        faites += 1
+    if faites < len(paires):
+        print(f"  ! Budget de {BUDGET_MIN:g} min atteint : {faites}/{len(paires)} "
+              f"recherches LinkedIn faites, on continue avec ce qui est collecté.")
     print(f"  {len(raw)} offres LinkedIn (avant fiche détaillée).")
 
-    if FRESH_DAYS:
+    if FRESH_DAYS and not _budget_epuise():
         print(f"  · Passe fraîcheur (<= {FRESH_DAYS} j)...")
         neuf = 0
-        for loc in LOCATIONS:
-            for q in queries:
-                for c in search_cards(q, loc, 1, recent_days=FRESH_DAYS):
-                    if c["id"] not in raw:
-                        raw[c["id"]] = c
-                        neuf += 1
+        for loc, q in paires:
+            if _budget_epuise():
+                break
+            for c in search_cards(q, loc, 1, recent_days=FRESH_DAYS):
+                if c["id"] not in raw:
+                    raw[c["id"]] = c
+                    neuf += 1
         print(f"    +{neuf} offres récentes que la recherche normale ratait.")
 
-    if SIMILAR_SEEDS:
+    if SIMILAR_SEEDS and not _budget_epuise():
         graines = [c for c in raw.values() if _pre_filter(c)][:SIMILAR_SEEDS]
         print(f"  · Offres similaires LinkedIn (à partir de {len(graines)} offres)...")
         trouve = 0
         for c in graines:
+            if _budget_epuise():
+                break
             for s in similar_cards(c.get("url", "")):
                 if s["id"] not in raw:
                     raw[s["id"]] = s
@@ -442,7 +469,10 @@ def harvest():
             continue
         detail = {}
         nid = numeric_id(card)
-        if nid and fetched < MAX_DETAIL_FETCH:
+        # Les fiches détaillées ont droit à 25 min de rab après le budget :
+        # sans elles la classification est bien moins bonne, mais au-delà on
+        # risquerait à nouveau le timeout du workflow.
+        if nid and fetched < MAX_DETAIL_FETCH and not _budget_epuise(25):
             detail = fetch_detail(nid)
             fetched += 1
         annonces.append(to_annonce(card, detail))
