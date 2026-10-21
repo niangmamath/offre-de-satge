@@ -168,6 +168,31 @@ class TestTagDomaine(unittest.TestCase):
                            "informatiques sont requises"),
             "Logistique / Transport / Achats")
 
+    def test_developpement_commercial_pas_informatique(self):
+        """Cas réel (newsletter 10/2026) : tagué Informatique à cause de
+        "développement"."""
+        self.assertEqual(
+            C.tag_domaine("Stage en développement commercial", ""),
+            "Commerce / Marketing / Vente")
+
+    def test_texte_mention_data_en_passant(self):
+        """Cas réel : "Financial Services" tagué Informatique parce que la
+        description citait "data" une fois."""
+        self.assertEqual(
+            C.tag_domaine("Stagiaire PFE - Financial Services F/H",
+                           "Mission d'audit et de conseil, analyse de data."),
+            "Finance / Comptabilité")
+
+    def test_texte_une_seule_mention_ne_suffit_pas(self):
+        self.assertEqual(
+            C.tag_domaine("Stagiaire PFE en PMO",
+                           "Bonne maîtrise des outils informatiques."),
+            "Autre")
+
+    def test_data_ne_matche_pas_update(self):
+        self.assertEqual(
+            C.tag_domaine("Stagiaire polyvalent", "update update"), "Autre")
+
 
 class TestGeographie(unittest.TestCase):
     def test_casablanca_ok(self):

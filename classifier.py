@@ -206,9 +206,18 @@ def type_stage_tag(blob):
 # conformément au choix "tous domaines confondus". Permettent juste à
 # l'utilisateur de filtrer/trier lui-même dans Excel.
 DOMAINE_KW = {
+    # Pas de "développement" seul : "développement commercial" / "business
+    # development" partaient en Informatique (newsletter par domaine fausse).
     "Informatique / Data": [
-        "informatique", "developpeur", "développeur", "developpement",
-        "développement", "data", "reseau", "réseau", "cybersecurite",
+        "informatique", "developpeur", "développeur", "software",
+        "web developer", "it intern", "it support", "support applicatif",
+        "business intelligence", "power bi", "sap", "erp", "security intern",
+        "support it", "it & ", "technicien support", "ui/ux", "ux/ui", "ux ",
+        "embedded", "embarqué", "automatisation de tests", "technolog",
+        "développement web", "developpement web", "développement logiciel",
+        "developpement logiciel", "développement informatique",
+        "developpement informatique", "développement mobile",
+        "developpement mobile", "data", "reseau", "réseau", "cybersecurite",
         "cybersécurité", "cyber", "cloud", "systeme d'information",
         "système d'information", " si ", "logiciel", "software", "python",
         "java", "devops", "intelligence artificielle", " ia ",
@@ -220,11 +229,16 @@ DOMAINE_KW = {
         "mécanique", "electrique", "électrique", "electromecanique",
         "électromécanique", "production", "maintenance", "qualite",
         "qualité", "process", "automatisme", "industriel", "btp",
+        "engineering", "engineer", "mechanical", "lean",
+        "amélioration continue", "amelioration continue",
+        "continuous improvement", "hse", "hsse", "ehs",
         "genie industriel", "génie industriel", "chantier",
     ],
     "Finance / Comptabilité": [
-        "comptable", "comptabilite", "comptabilité", "finance", "audit",
-        "controle de gestion", "contrôle de gestion", "fiscal",
+        "comptable", "comptabilite", "comptabilité", "financ", "audit",
+        "controle de gestion", "contrôle de gestion", "controleur de gestion",
+        "contrôleur de gestion", "fiscal", "asset management", "risques",
+        "contrôle interne", "controle interne",
         "tresorerie", "trésorerie", "credit", "crédit", "banque",
         "bancaire", "assurance",
     ],
@@ -235,11 +249,16 @@ DOMAINE_KW = {
     ],
     "Commerce / Marketing / Vente": [
         "commercial", "vente", "marketing", "communication",
-        "business developer", "chef de produit", "digital marketing",
+        "business developer", "business development",
+        "développement commercial", "developpement commercial",
+        "chef de produit", "digital marketing", "sales", "pre-sales",
+        "customer service", "service client", "relation client",
         "community manager",
     ],
     "RH": [
-        "ressources humaines", " rh ", "recrutement", "talent acquisition",
+        "ressources humaines", " rh ", " hr ", "human resources",
+        "recrutement", "recruiting", "recruitment", "talent acquisition",
+        "employee relations",
         "formation", "paie",
     ],
     "Juridique": ["juridique", "droit", "legal", "légal", "contentieux",
@@ -254,16 +273,43 @@ def tag_domaine(poste, texte):
     """Tag informatif — priorité au TITRE (plus fiable) avant de retomber
     sur le texte complet (une compétence citée en passant dans le corps,
     ex. "compétences informatiques" pour un poste logistique, ne doit pas
-    l'emporter sur un titre déjà explicite)."""
-    poste_l = f" {poste} ".lower()
-    for label, kws in DOMAINE_KW.items():
-        if any(k in poste_l for k in kws):
-            return label
-    texte_l = f" {poste} {texte} ".lower()
-    for label, kws in DOMAINE_KW.items():
-        if any(k in texte_l for k in kws):
-            return label
+    l'emporter sur un titre déjà explicite).
+
+    Comptage par domaine plutôt que "premier domaine qui matche" : avec
+    l'ancien ordre, Informatique (testé en premier) raflait la moitié des
+    offres dès que la description citait "data" ou "informatique" en passant
+    — et la newsletter par domaine envoyait à peu près le même mail à tout
+    le monde. Dans le texte, il faut au moins 2 occurrences pour trancher."""
+    score_titre = _scores_domaine(poste)
+    if score_titre:
+        return max(score_titre, key=score_titre.get)
+    score_texte = _scores_domaine(f"{poste} {texte}")
+    if score_texte:
+        meilleur = max(score_texte, key=score_texte.get)
+        if score_texte[meilleur] >= 2:
+            return meilleur
     return "Autre"
+
+
+# Mot-clé ancré en DÉBUT de mot : "data" ne matche plus "update", "rh" plus
+# "rhétorique", mais "financ" couvre finance/financial/financier.
+_DOMAINE_RE = {
+    label: [re.compile(r"(?<!\w)" + re.escape(k.strip()) + (r"(?!\w)" if k != k.strip() else ""))
+            for k in kws]
+    for label, kws in DOMAINE_KW.items()
+}
+
+
+def _scores_domaine(blob):
+    """{domaine: nb d'occurrences de ses mots-clés}, domaines absents omis.
+    max() garde le premier domaine de DOMAINE_KW en cas d'égalité."""
+    blob = f" {blob} ".lower()
+    scores = {}
+    for label, regs in _DOMAINE_RE.items():
+        n = sum(len(r.findall(blob)) for r in regs)
+        if n:
+            scores[label] = n
+    return scores
 
 
 # ----------------------------------------------------------------- GEOGRAPHIE
