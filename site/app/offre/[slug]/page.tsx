@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getOffreBySlug } from "@/lib/db";
 import ShareButton from "@/components/ShareButton";
-import { CoinIcon } from "@/components/icons";
+import { ChatIcon, CoinIcon } from "@/components/icons";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -97,9 +97,16 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
       <JobPostingJsonLd offre={offre} />
 
       <header className="bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-700 px-4 py-6 sm:px-6">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <Link href="/" className="text-sm text-indigo-100 hover:text-white">
             ← Retour à toutes les offres
+          </Link>
+          <Link
+            href="/contact"
+            className="inline-flex items-center gap-1.5 text-sm text-indigo-100 hover:text-white"
+          >
+            <ChatIcon className="h-4 w-4 shrink-0" />
+            Nous contacter
           </Link>
         </div>
       </header>

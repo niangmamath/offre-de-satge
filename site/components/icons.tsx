@@ -150,3 +150,15 @@ export function SparkleIcon({ className = "" }: IconProps) {
     </svg>
   );
 }
+
+export function ChatIcon({ className = "" }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 12c0 4.14-4.03 7.5-9 7.5-1.1 0-2.15-.16-3.12-.46L3 20.5l1.6-3.73C3.6 15.44 3 13.78 3 12c0-4.14 4.03-7.5 9-7.5s9 3.36 9 7.5z"
+      />
+    </svg>
+  );
+}

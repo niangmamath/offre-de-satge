@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Offre } from "@/lib/db";
 import OffreCard from "./OffreCard";
-import { CapIcon, MailboxIcon } from "@/components/icons";
+import Link from "next/link";
+import { CapIcon, ChatIcon, MailboxIcon } from "@/components/icons";
 
 const TOUS = "Tous";
 const PAR_PAGE = 30;
@@ -134,6 +135,13 @@ export default function OffresExplorer({
               <MailboxIcon className="h-4 w-4 shrink-0" />
               Recevoir les nouvelles offres par email
             </a>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/30 transition hover:bg-white/25 sm:text-sm"
+            >
+              <ChatIcon className="h-4 w-4 shrink-0" />
+              Nous contacter
+            </Link>
           </div>
         </div>
       </header>
