@@ -7,8 +7,6 @@ import { CapIcon, MailboxIcon } from "@/components/icons";
 
 const TOUS = "Tous";
 const PAR_PAGE = 30;
-const TRI_FRAICHEUR = "fraicheur";
-const TRI_RECENT = "recent";
 
 function uniqueSorted(values: (string | null)[]): string[] {
   return Array.from(new Set(values.filter((v): v is string => !!v))).sort((a, b) =>
@@ -50,7 +48,6 @@ export default function OffresExplorer({
   const [typeStage, setTypeStage] = useState(TOUS);
   const [ville, setVille] = useState(TOUS);
   const [masquerAgees, setMasquerAgees] = useState(false);
-  const [tri, setTri] = useState(TRI_FRAICHEUR);
   const [visibles, setVisibles] = useState(PAR_PAGE);
 
   const domaines = useMemo(() => [TOUS, ...uniqueSorted(offres.map((o) => o.domaine))], [offres]);
@@ -64,7 +61,8 @@ export default function OffresExplorer({
 
   const filtrees = useMemo(() => {
     const q = recherche.trim().toLowerCase();
-    const res = offres.filter((o) => {
+    // "offres" arrive déjà triée par date de publication (requête SQL).
+    return offres.filter((o) => {
       if (domaine !== TOUS && o.domaine !== domaine) return false;
       if (typeStage !== TOUS && o.type_stage !== typeStage) return false;
       if (ville !== TOUS && o.ville !== ville) return false;
@@ -75,21 +73,15 @@ export default function OffresExplorer({
       }
       return true;
     });
-    // "offres" arrive déjà triée par fraîcheur (fenêtre puis âge) depuis la
-    // requête SQL -> rien à faire pour ce tri, juste ré-ordonner pour l'autre.
-    if (tri === TRI_RECENT) {
-      return [...res].sort((a, b) => (b.date_pub_iso ?? "").localeCompare(a.date_pub_iso ?? ""));
-    }
-    return res;
-  }, [offres, recherche, domaine, typeStage, ville, masquerAgees, tri]);
+  }, [offres, recherche, domaine, typeStage, ville, masquerAgees]);
 
-  // Revient à la 1re page de résultats à chaque changement de filtre/tri —
+  // Revient à la 1re page de résultats à chaque changement de filtre —
   // sinon "visibles" pourrait rester élevé sur une liste filtrée bien plus
   // courte, ou au contraire cacher des résultats pertinents après un
   // nouveau filtre plus restrictif.
   useEffect(() => {
     setVisibles(PAR_PAGE);
-  }, [recherche, domaine, typeStage, ville, masquerAgees, tri]);
+  }, [recherche, domaine, typeStage, ville, masquerAgees]);
 
   const affichees = filtrees.slice(0, visibles);
 
@@ -157,13 +149,6 @@ export default function OffresExplorer({
               options={typesStage}
             />
             <Select label="Ville" value={ville} onChange={setVille} options={villes} />
-            <Select
-              label="Trier par"
-              value={tri}
-              onChange={setTri}
-              options={[TRI_FRAICHEUR, TRI_RECENT]}
-              labels={{ [TRI_FRAICHEUR]: "Fraîcheur", [TRI_RECENT]: "Date de publication" }}
-            />
             <label className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600">
               <input
                 type="checkbox"
@@ -214,13 +199,11 @@ function Select({
   value,
   onChange,
   options,
-  labels,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: string[];
-  labels?: Record<string, string>;
 }) {
   return (
     <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -232,7 +215,7 @@ function Select({
       >
         {options.map((o) => (
           <option key={o} value={o}>
-            {labels?.[o] ?? o}
+            {o}
           </option>
         ))}
       </select>

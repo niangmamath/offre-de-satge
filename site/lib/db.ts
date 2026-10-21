@@ -34,16 +34,7 @@ export async function getOffres(): Promise<Offre[] | null> {
             indemnite, premiere_detection, derniere_verification
      FROM offres
      WHERE masque = FALSE
-     ORDER BY
-       CASE fenetre
-         WHEN 'NOUVEAU' THEN 0
-         WHEN 'OUVERTE' THEN 1
-         WHEN 'ROUVERTE' THEN 2
-         WHEN 'VIVIER' THEN 3
-         WHEN 'AGÉE' THEN 4
-         ELSE 5
-       END,
-       age_jours ASC NULLS LAST`
+     ORDER BY date_pub_iso DESC NULLS LAST, premiere_detection DESC`
   );
   return rows;
 }
