@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DOMAINES_NEWSLETTER } from "@/lib/newsletter-domaines";
 import { CheckIcon } from "@/components/icons";
+import DomainesDropdown from "@/components/DomainesDropdown";
 
 type Etape = "email" | "code" | "confirme" | "already";
 
@@ -147,6 +148,7 @@ export default function NewsletterForm({ villes = [] }: { villes?: string[] }) {
           placeholder="votre@email.com"
           className="w-full rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:w-64"
         />
+        <DomainesDropdown options={DOMAINES_NEWSLETTER} value={domaines} onChange={setDomaines} />
         <select
           value={ville}
           onChange={(e) => setVille(e.target.value)}
@@ -168,32 +170,6 @@ export default function NewsletterForm({ villes = [] }: { villes?: string[] }) {
           {loading ? "…" : "Recevoir les nouvelles offres"}
         </button>
       </div>
-      <fieldset className="mt-1 flex max-w-2xl flex-wrap justify-center gap-1.5">
-        <legend className="mb-1.5 w-full text-xs text-gray-500">
-          Domaines qui vous intéressent{" "}
-          <span className="text-gray-400">(aucun sélectionné = tous)</span>
-        </legend>
-        {DOMAINES_NEWSLETTER.map((d) => {
-          const actif = domaines.includes(d);
-          return (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={actif}
-              onClick={() =>
-                setDomaines((prev) => (actif ? prev.filter((x) => x !== d) : [...prev, d]))
-              }
-              className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition ${
-                actif
-                  ? "bg-indigo-600 text-white ring-indigo-600"
-                  : "bg-white text-gray-600 ring-gray-300 hover:ring-indigo-400"
-              }`}
-            >
-              {d}
-            </button>
-          );
-        })}
-      </fieldset>
       {erreur ? <p className="text-xs text-red-600">{erreur}</p> : null}
     </form>
   );
