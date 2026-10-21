@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { connection } from "next/server";
 import { getDerniereMaj, getOffres, type Offre } from "@/lib/db";
 import OffresExplorer from "@/components/OffresExplorer";
@@ -69,6 +70,12 @@ export default async function Home() {
         <div className="border-t border-gray-100 px-4 py-6 text-center text-xs text-gray-400 sm:px-6">
           Offres collectées automatiquement (LinkedIn, Rekrute.com) — vérifiez toujours
           les conditions auprès de l&apos;entreprise avant de postuler.
+          <span className="mt-2 block">
+            Une idée pour améliorer le site, un problème ?{" "}
+            <Link href="/contact" className="font-medium text-indigo-600 hover:underline">
+              Contactez-nous
+            </Link>
+          </span>
         </div>
       </footer>
     </div>
