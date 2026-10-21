@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Veille des offres de STAGE au Maroc — TOUS domaines, TOUS types (PFE, été,
-initiation, alternance).
+initiation, pré-embauche).
 
 Source principale : LinkedIn — endpoint PUBLIC "jobs-guest" (aucune connexion
 requise, n'utilise pas votre compte). Mécanique de scraping/retry/cache
@@ -107,7 +107,7 @@ LOCATIONS = [
 QUERIES = [
     # --- Générique ---------------------------------------------------------
     "stage", "stage PFE", "stage de fin d'études", "stage d'été",
-    "stage d'initiation", "stage alternance", "alternance", "stagiaire",
+    "stage d'initiation", "stage pré-embauche", "stagiaire",
     "internship Morocco",
     # --- Informatique / Data ------------------------------------------------
     "stage développeur", "stage développement web", "stage data analyst",

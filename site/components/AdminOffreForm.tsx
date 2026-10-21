@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { DOMAINES_NEWSLETTER } from "@/lib/newsletter-domaines";
 
-const TYPES_STAGE = ["Non précisé", "PFE / fin d'études", "Alternance", "Été / initiation"];
+const TYPES_STAGE = ["Non précisé", "PFE / fin d'études", "Pré-embauche", "Été / initiation"];
 
 export type OffreFormValues = {
   poste: string;

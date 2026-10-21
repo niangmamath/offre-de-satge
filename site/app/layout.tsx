@@ -23,7 +23,7 @@ const siteUrl =
 
 const title = "Stages au Maroc — toutes les offres, tous domaines";
 const description =
-  "Veille automatisée des offres de stage au Maroc : PFE, été, initiation, alternance, tous domaines confondus (informatique, ingénierie, finance, commerce, RH...). Mis à jour en continu, LinkedIn et Rekrute.com.";
+  "Veille automatisée des offres de stage au Maroc : PFE, pré-embauche, été, initiation, tous domaines confondus (informatique, ingénierie, finance, commerce, RH...). Mis à jour en continu, LinkedIn et Rekrute.com.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   description,
   keywords: [
     "stage Maroc", "stage PFE Maroc", "offre de stage", "stagiaire Maroc",
-    "alternance Maroc", "stage été Maroc", "emploi stage étudiant",
+    "stage pré-embauche Maroc", "stage été Maroc", "emploi stage étudiant",
   ],
   openGraph: {
     title,

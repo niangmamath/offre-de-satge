@@ -188,16 +188,25 @@ def detect_stage(poste, texte, emploi_label=""):
 def type_stage_tag(blob):
     """Catégorie informative — ne filtre rien (le projet accepte tous les
     types de stage)."""
+    # Apostrophe typographique (’) fréquente sur LinkedIn : "fin d’études"
+    # ne matchait pas "fin d'études" et la PFE tombait dans une autre catégorie.
+    blob = blob.replace("’", "'")
     if any(k in blob for k in ("pfe", "fin d etudes", "fin d'etudes",
-                                "fin d'études", "projet de fin d")):
+                                "fin d'études", "projet de fin d",
+                                "end-of-studies", "end of studies",
+                                "final year project", "graduation project")):
         return "PFE / fin d'études"
-    if any(k in blob for k in ("alternance", "alternant", "apprentissage",
-                                "apprenti")):
-        return "Alternance"
+    # Pas de catégorie "Alternance" : quasi inexistante au Maroc, et le mot
+    # "apprentissage" (= le fait d'apprendre) dans les descriptions taguait
+    # des stages classiques "Alternance" (14 offres sur 206 en 10/2026).
+    if any(k in blob for k in ("pre-embauche", "pré-embauche", "pre embauche",
+                                "pré embauche", "preembauche", "préembauche")):
+        return "Pré-embauche"
     if any(k in blob for k in ("stage d'ete", "stage d ete", "stage d'été",
                                 "stage d'initiation", "stage d initiation",
                                 "stage decouverte", "stage découverte",
-                                "stage ouvrier")):
+                                "stage ouvrier", "stage d'observation",
+                                "stage d observation")):
         return "Été / initiation"
     return "Non précisé"
 

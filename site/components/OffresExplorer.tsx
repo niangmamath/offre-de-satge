@@ -123,7 +123,7 @@ export default function OffresExplorer({
             <p className="text-xs text-indigo-200">Mis à jour : {formatMaj(derniereMaj)}</p>
           </div>
           <p className="mt-1 max-w-xl text-sm text-indigo-100">
-            Tous domaines, tous types de stage — PFE, été, initiation, alternance.
+            Tous domaines, tous types de stage — PFE, pré-embauche, été, initiation.
           </p>
 
           <div className="relative mt-4 max-w-2xl">

@@ -43,7 +43,7 @@ REKRUTE_BASE = "https://www.rekrute.com/offres.html"
 # Termes de recherche larges : le tri fin (vrai stage vs pas) est fait par
 # classifier.detect_stage() en aval, pas ici — cf. incident constaté lors du
 # design (le "Type de contrat" est souvent absent/commenté côté Rekrute).
-REKRUTE_TERMS = ["Stage", "Stagiaire", "PFE", "Alternance"]
+REKRUTE_TERMS = ["Stage", "Stagiaire", "PFE"]
 REKRUTE_MAX_PAGES = 5  # par terme de recherche
 
 

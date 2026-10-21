@@ -30,10 +30,24 @@ class TestDetectStage(unittest.TestCase):
         self.assertTrue(est)
         self.assertEqual(typ, "PFE / fin d'études")
 
-    def test_titre_alternance(self):
-        est, typ, motif = C.detect_stage("Alternant Comptabilité H/F", "")
+    def test_titre_pre_embauche(self):
+        est, typ, motif = C.detect_stage("Stagiaire Pré-Embauche RH (F/H)", "")
         self.assertTrue(est)
-        self.assertEqual(typ, "Alternance")
+        self.assertEqual(typ, "Pré-embauche")
+
+    def test_pfe_anglais_et_apostrophe_typographique(self):
+        self.assertEqual(
+            C.type_stage_tag("end-of-studies internship | operations"), "PFE / fin d'études")
+        self.assertEqual(
+            C.type_stage_tag("stage de fin d’études"), "PFE / fin d'études")
+
+    def test_apprentissage_dans_le_texte_pas_un_type(self):
+        """Cas réel 10/2026 : "goût de l'apprentissage" taguait Alternance."""
+        est, typ, motif = C.detect_stage(
+            "Stagiaire Technicien Support Informatique (F/H)",
+            "Vous avez le goût de l'apprentissage et du travail en équipe.")
+        self.assertTrue(est)
+        self.assertEqual(typ, "Non précisé")
 
     def test_contrat_explicite_dans_le_texte(self):
         est, typ, motif = C.detect_stage(
