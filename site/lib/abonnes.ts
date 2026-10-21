@@ -25,6 +25,16 @@ const MIGRATIONS_SQL = [
   "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS code_expire TIMESTAMPTZ",
   "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS tentatives INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS domaine_prefere TEXT",
+  // Plusieurs domaines + une ville (remplacent domaine_prefere, gardé pour
+  // les anciennes lignes ; même migration côté newsletter.py).
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS domaines TEXT[]",
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS ville_preferee TEXT",
+  `UPDATE abonnes SET domaines = ARRAY[domaine_prefere]
+   WHERE domaines IS NULL AND domaine_prefere IS NOT NULL`,
+  // Dates pour les statistiques de l'admin (inscriptions / désabonnements
+  // par semaine). NULL sur les lignes antérieures : cree_le sert de repli.
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS confirme_le TIMESTAMPTZ",
+  "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS desabonne_le TIMESTAMPTZ",
 ];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -49,12 +59,13 @@ export type SubscribeResult =
   | { status: "invalid_email" }
   | { status: "db_unavailable" };
 
-/** domainePrefere : null/vide = tous domaines confondus (comportement par
- * défaut, inchangé). Toujours ré-enregistré même sur une adresse déjà
- * confirmée -> permet de changer sa préférence sans repasser par un code. */
+/** domainesChoisis vide = tous domaines ; villeChoisie vide = toutes villes.
+ * Toujours ré-enregistrées même sur une adresse déjà confirmée -> permet de
+ * changer ses préférences sans repasser par un code. */
 export async function subscribe(
   emailRaw: string,
-  domainePrefere?: string | null
+  domainesChoisis?: string[] | null,
+  villeChoisie?: string | null
 ): Promise<SubscribeResult> {
   const email = emailRaw.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return { status: "invalid_email" };
@@ -63,8 +74,17 @@ export async function subscribe(
   if (!pool) return { status: "db_unavailable" };
   await ensureSchema(pool);
 
-  const domaine =
-    domainePrefere && DOMAINES_NEWSLETTER.includes(domainePrefere) ? domainePrefere : null;
+  const valides = Array.from(
+    new Set((domainesChoisis ?? []).filter((d) => DOMAINES_NEWSLETTER.includes(d)))
+  );
+  const domaines = valides.length > 0 ? valides : null;
+  // Ville acceptée seulement si elle existe parmi les offres (liste du formulaire).
+  let ville: string | null = null;
+  if (villeChoisie) {
+    const r = await pool.query("SELECT 1 FROM offres WHERE ville = $1 LIMIT 1", [villeChoisie]);
+    ville = r.rows.length > 0 ? villeChoisie : null;
+  }
+  const prefs = "domaines = $2, ville_preferee = $3, domaine_prefere = NULL";
 
   const existing = await pool.query<{ confirme: boolean; actif: boolean }>(
     "SELECT confirme, actif FROM abonnes WHERE email = $1",
@@ -77,31 +97,32 @@ export async function subscribe(
   if (existing.rows.length > 0) {
     const row = existing.rows[0];
     if (row.confirme && row.actif) {
-      await pool.query("UPDATE abonnes SET domaine_prefere = $2 WHERE email = $1", [email, domaine]);
+      await pool.query(`UPDATE abonnes SET ${prefs} WHERE email = $1`, [email, domaines, ville]);
       return { status: "already_confirmed" };
     }
     if (row.confirme && !row.actif) {
       // Déjà confirmé mais désabonné entre-temps -> réactive directement
       // (adresse déjà prouvée une fois), pas besoin d'un nouveau code.
       await pool.query(
-        "UPDATE abonnes SET actif = TRUE, domaine_prefere = $2 WHERE email = $1",
-        [email, domaine]
+        `UPDATE abonnes SET actif = TRUE, desabonne_le = NULL, ${prefs} WHERE email = $1`,
+        [email, domaines, ville]
       );
       return { status: "reactivated" };
     }
     // Jamais confirmé -> nouveau code, tentatives remises à zéro.
     await pool.query(
-      `UPDATE abonnes SET actif = TRUE, code = $2, code_expire = $3, tentatives = 0,
-              domaine_prefere = $4 WHERE email = $1`,
-      [email, code, expire, domaine]
+      `UPDATE abonnes SET actif = TRUE, code = $4, code_expire = $5, tentatives = 0, ${prefs}
+       WHERE email = $1`,
+      [email, domaines, ville, code, expire]
     );
     return { status: "resent", code };
   }
 
   const token = randomUUID(); // désabonnement uniquement, jamais affiché à l'inscription
   await pool.query(
-    "INSERT INTO abonnes (email, token, code, code_expire, domaine_prefere) VALUES ($1, $2, $3, $4, $5)",
-    [email, token, code, expire, domaine]
+    `INSERT INTO abonnes (email, token, code, code_expire, domaines, ville_preferee)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [email, token, code, expire, domaines, ville]
   );
   return { status: "created", code };
 }
@@ -144,7 +165,7 @@ export async function verifyOtp(emailRaw: string, codeRaw: string): Promise<Veri
   }
 
   await pool.query(
-    "UPDATE abonnes SET confirme = TRUE, code = NULL, code_expire = NULL WHERE email = $1",
+    "UPDATE abonnes SET confirme = TRUE, confirme_le = now(), code = NULL, code_expire = NULL WHERE email = $1",
     [email]
   );
   return { status: "ok", dejaConfirme: false, token: row.token };
@@ -154,7 +175,8 @@ export async function unsubscribe(token: string): Promise<boolean> {
   const pool = getPool();
   if (!pool) return false;
   const res = await pool.query(
-    "UPDATE abonnes SET actif = FALSE WHERE token = $1", [token]
+    "UPDATE abonnes SET actif = FALSE, desabonne_le = now() WHERE token = $1 AND actif = TRUE",
+    [token]
   );
   return (res.rowCount ?? 0) > 0;
 }
@@ -167,7 +189,8 @@ export type AbonneAdmin = {
   token: string;
   confirme: boolean;
   actif: boolean;
-  domaine_prefere: string | null;
+  domaines: string[] | null;
+  ville_preferee: string | null;
   cree_le: string;
   dernier_envoi: string | null;
 };
@@ -177,7 +200,7 @@ export async function listerAbonnesAdmin(): Promise<AbonneAdmin[]> {
   if (!pool) return [];
   await ensureSchema(pool);
   const { rows } = await pool.query<AbonneAdmin>(
-    `SELECT id, email, token, confirme, actif, domaine_prefere, cree_le, dernier_envoi
+    `SELECT id, email, token, confirme, actif, domaines, ville_preferee, cree_le, dernier_envoi
      FROM abonnes ORDER BY cree_le DESC`
   );
   return rows;
@@ -188,20 +211,42 @@ export type AbonnesStats = {
   enAttente: number;
   desabonnes: number;
   parDomaine: { domaine: string; n: number }[];
+  parVille: { ville: string; n: number }[];
+  /** 8 dernières semaines, de la plus ancienne à la plus récente (lundi ISO). */
+  parSemaine: { semaine: string; inscriptions: number; desabonnements: number }[];
 };
 
 export async function getAbonnesStats(): Promise<AbonnesStats | null> {
   const pool = getPool();
   if (!pool) return null;
   await ensureSchema(pool);
-  const [confirmesActifs, enAttente, desabonnes, parDomaine] = await Promise.all([
+  const [confirmesActifs, enAttente, desabonnes, parDomaine, parVille, parSemaine] = await Promise.all([
     pool.query<{ count: string }>("SELECT count(*) FROM abonnes WHERE confirme = TRUE AND actif = TRUE"),
     pool.query<{ count: string }>("SELECT count(*) FROM abonnes WHERE confirme = FALSE"),
     pool.query<{ count: string }>("SELECT count(*) FROM abonnes WHERE confirme = TRUE AND actif = FALSE"),
+    // Un abonné à 2 domaines compte dans chacun des deux.
     pool.query<{ domaine: string; n: string }>(
-      `SELECT COALESCE(domaine_prefere, 'Tous domaines') AS domaine, count(*) AS n
+      `SELECT COALESCE(d, 'Tous domaines') AS domaine, count(*) AS n
+       FROM abonnes LEFT JOIN LATERAL unnest(domaines) AS d ON TRUE
+       WHERE confirme = TRUE AND actif = TRUE
+       GROUP BY 1 ORDER BY n DESC`
+    ),
+    pool.query<{ ville: string; n: string }>(
+      `SELECT COALESCE(ville_preferee, 'Toutes villes') AS ville, count(*) AS n
        FROM abonnes WHERE confirme = TRUE AND actif = TRUE
-       GROUP BY domaine ORDER BY n DESC`
+       GROUP BY 1 ORDER BY n DESC`
+    ),
+    pool.query<{ semaine: string; inscriptions: string; desabonnements: string }>(
+      `WITH semaines AS (
+         SELECT generate_series(date_trunc('week', now()) - interval '7 weeks',
+                                date_trunc('week', now()), interval '1 week') AS s
+       )
+       SELECT to_char(s, 'YYYY-MM-DD') AS semaine,
+              (SELECT count(*) FROM abonnes WHERE confirme = TRUE
+                 AND date_trunc('week', COALESCE(confirme_le, cree_le)) = s) AS inscriptions,
+              (SELECT count(*) FROM abonnes
+                 WHERE date_trunc('week', desabonne_le) = s) AS desabonnements
+       FROM semaines ORDER BY s`
     ),
   ]);
   return {
@@ -209,6 +254,12 @@ export async function getAbonnesStats(): Promise<AbonnesStats | null> {
     enAttente: Number(enAttente.rows[0]?.count ?? 0),
     desabonnes: Number(desabonnes.rows[0]?.count ?? 0),
     parDomaine: parDomaine.rows.map((r) => ({ domaine: r.domaine, n: Number(r.n) })),
+    parVille: parVille.rows.map((r) => ({ ville: r.ville, n: Number(r.n) })),
+    parSemaine: parSemaine.rows.map((r) => ({
+      semaine: r.semaine,
+      inscriptions: Number(r.inscriptions),
+      desabonnements: Number(r.desabonnements),
+    })),
   };
 }
 
@@ -217,6 +268,9 @@ export async function getAbonnesStats(): Promise<AbonnesStats | null> {
 export async function desabonnerParId(id: number): Promise<boolean> {
   const pool = getPool();
   if (!pool) return false;
-  const res = await pool.query("UPDATE abonnes SET actif = FALSE WHERE id = $1", [id]);
+  const res = await pool.query(
+    "UPDATE abonnes SET actif = FALSE, desabonne_le = now() WHERE id = $1",
+    [id]
+  );
   return (res.rowCount ?? 0) > 0;
 }

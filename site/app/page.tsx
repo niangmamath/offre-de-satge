@@ -31,6 +31,9 @@ export default async function Home() {
   // moment du build. connection() force une exécution à CHAQUE requête.
   await connection();
   const [offres, derniereMaj] = await Promise.all([getOffres(), getDerniereMaj()]);
+  const villesNewsletter = Array.from(
+    new Set((offres ?? []).map((o) => o.ville).filter((v): v is string => !!v))
+  ).sort((a, b) => a.localeCompare(b, "fr"));
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
@@ -65,7 +68,7 @@ export default async function Home() {
             <MailboxIcon className="h-4 w-4 shrink-0 text-indigo-600" />
             Recevez les nouvelles offres par email, chaque semaine
           </p>
-          <NewsletterForm />
+          <NewsletterForm villes={villesNewsletter} />
         </div>
         <div className="border-t border-gray-100 px-4 py-6 text-center text-xs text-gray-400 sm:px-6">
           Offres collectées automatiquement (LinkedIn, Rekrute.com) — vérifiez toujours

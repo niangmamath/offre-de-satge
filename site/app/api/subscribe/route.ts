@@ -27,7 +27,13 @@ async function envoyerCode(email: string, code: string) {
 // automatiquement par la plupart des bots de spam -> on ignore silencieusement
 // sans révéler que c'est un piège.
 export async function POST(request: Request) {
-  let body: { email?: string; site_web?: string; domaine?: string };
+  let body: {
+    email?: string;
+    site_web?: string;
+    domaines?: unknown;
+    domaine?: string; // ancien format (un seul domaine), encore accepté
+    ville?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -43,7 +49,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email requis" }, { status: 400 });
   }
 
-  const result = await subscribe(email, body.domaine);
+  const domaines = Array.isArray(body.domaines)
+    ? body.domaines.filter((d): d is string => typeof d === "string")
+    : body.domaine
+      ? [body.domaine]
+      : [];
+  const ville = typeof body.ville === "string" ? body.ville.trim() : "";
+
+  const result = await subscribe(email, domaines, ville || null);
 
   switch (result.status) {
     case "invalid_email":

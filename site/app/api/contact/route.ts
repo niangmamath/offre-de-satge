@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTransport, fromAddress, logoSvg } from "@/lib/mailer";
 import { SUJETS_CONTACT, MESSAGE_MIN, MESSAGE_MAX } from "@/lib/contact";
+import { enregistrerMessage, marquerMailEnvoye } from "@/lib/messages";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -73,10 +74,16 @@ export async function POST(request: Request) {
     );
   }
 
+  // Enregistré en base d'abord (visible dans /admin/messages) : le message
+  // n'est perdu que si la base ET l'envoi par mail échouent tous les deux.
+  const id = await enregistrerMessage({ nom, email, sujet, message });
+
   const transport = getTransport();
   if (!transport) {
-    console.warn("[contact] SMTP non configuré — message non transmis.");
-    return NextResponse.json({ error: "Service indisponible, réessayez plus tard" }, { status: 503 });
+    console.warn("[contact] SMTP non configuré — message non transmis par mail.");
+    return id
+      ? NextResponse.json({ status: "ok" })
+      : NextResponse.json({ error: "Service indisponible, réessayez plus tard" }, { status: 503 });
   }
 
   const destinataire = process.env.CONTACT_EMAIL || fromAddress();
@@ -97,12 +104,15 @@ export async function POST(request: Request) {
           <p style="color:#999;font-size:12px;margin-top:20px;">Répondez directement à ce mail pour écrire au visiteur.</p>
         </div>`,
     });
+    if (id) await marquerMailEnvoye(id);
   } catch (e) {
     console.error("[contact] échec envoi:", e);
-    return NextResponse.json(
-      { error: "Le message n'a pas pu être envoyé, réessayez plus tard." },
-      { status: 502 }
-    );
+    if (!id) {
+      return NextResponse.json(
+        { error: "Le message n'a pas pu être envoyé, réessayez plus tard." },
+        { status: 502 }
+      );
+    }
   }
 
   return NextResponse.json({ status: "ok" });

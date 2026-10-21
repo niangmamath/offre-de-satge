@@ -33,7 +33,12 @@ export default async function AdminAbonnesPage() {
             {abonnes.map((a) => (
               <tr key={a.id}>
                 <td className="px-4 py-2.5 font-medium text-gray-900">{a.email}</td>
-                <td className="px-4 py-2.5 text-gray-600">{a.domaine_prefere || "Tous domaines"}</td>
+                <td className="px-4 py-2.5 text-gray-600">
+                  {a.domaines?.length ? a.domaines.join(", ") : "Tous domaines"}
+                  <span className="block text-xs text-gray-400">
+                    {a.ville_preferee || "Toutes villes"}
+                  </span>
+                </td>
                 <td className="px-4 py-2.5">
                   <Statut confirme={a.confirme} actif={a.actif} />
                 </td>

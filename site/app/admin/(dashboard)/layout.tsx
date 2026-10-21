@@ -28,6 +28,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link prefetch={false} href="/admin/abonnes" className="hover:text-indigo-700">
                 Abonnés
               </Link>
+              <Link prefetch={false} href="/admin/messages" className="hover:text-indigo-700">
+                Messages
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">

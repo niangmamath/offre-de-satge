@@ -3,11 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Offre } from "@/lib/db";
 import OffreCard from "./OffreCard";
+import { useFavoris } from "@/lib/favoris";
 import Link from "next/link";
 import { CapIcon, ChatIcon, MailboxIcon } from "@/components/icons";
 
 const TOUS = "Tous";
 const PAR_PAGE = 30;
+// Filtre "Publication" : âge maximal en jours (age_jours, calculé par le pipeline).
+const PUBLICATION: Record<string, number | null> = {
+  "Toutes les dates": null,
+  "Aujourd'hui ou hier": 1,
+  "7 derniers jours": 7,
+  "30 derniers jours": 30,
+};
+const PUBLICATION_OPTIONS = Object.keys(PUBLICATION);
 
 function uniqueSorted(values: (string | null)[]): string[] {
   return Array.from(new Set(values.filter((v): v is string => !!v))).sort((a, b) =>
@@ -49,6 +58,9 @@ export default function OffresExplorer({
   const [typeStage, setTypeStage] = useState(TOUS);
   const [ville, setVille] = useState(TOUS);
   const [masquerAgees, setMasquerAgees] = useState(false);
+  const [publication, setPublication] = useState(PUBLICATION_OPTIONS[0]);
+  const [favorisSeuls, setFavorisSeuls] = useState(false);
+  const { favoris } = useFavoris();
   const [visibles, setVisibles] = useState(PAR_PAGE);
 
   const domaines = useMemo(() => [TOUS, ...uniqueSorted(offres.map((o) => o.domaine))], [offres]);
@@ -59,11 +71,19 @@ export default function OffresExplorer({
   const villes = useMemo(() => [TOUS, ...uniqueSorted(offres.map((o) => o.ville))], [offres]);
 
   const nouvelles = useMemo(() => offres.filter((o) => o.fenetre === "NOUVEAU").length, [offres]);
+  // Seulement les favoris encore présents parmi les offres actives.
+  const nbFavoris = useMemo(
+    () => offres.filter((o) => favoris.includes(o.slug)).length,
+    [offres, favoris]
+  );
 
   const filtrees = useMemo(() => {
     const q = recherche.trim().toLowerCase();
+    const ageMax = PUBLICATION[publication];
     // "offres" arrive déjà triée par date de publication (requête SQL).
     return offres.filter((o) => {
+      if (favorisSeuls && !favoris.includes(o.slug)) return false;
+      if (ageMax !== null && (o.age_jours === null || o.age_jours > ageMax)) return false;
       if (domaine !== TOUS && o.domaine !== domaine) return false;
       if (typeStage !== TOUS && o.type_stage !== typeStage) return false;
       if (ville !== TOUS && o.ville !== ville) return false;
@@ -74,7 +94,7 @@ export default function OffresExplorer({
       }
       return true;
     });
-  }, [offres, recherche, domaine, typeStage, ville, masquerAgees]);
+  }, [offres, recherche, domaine, typeStage, ville, masquerAgees, publication, favorisSeuls, favoris]);
 
   // Revient à la 1re page de résultats à chaque changement de filtre —
   // sinon "visibles" pourrait rester élevé sur une liste filtrée bien plus
@@ -82,7 +102,7 @@ export default function OffresExplorer({
   // nouveau filtre plus restrictif.
   useEffect(() => {
     setVisibles(PAR_PAGE);
-  }, [recherche, domaine, typeStage, ville, masquerAgees]);
+  }, [recherche, domaine, typeStage, ville, masquerAgees, publication, favorisSeuls]);
 
   const affichees = filtrees.slice(0, visibles);
 
@@ -157,6 +177,36 @@ export default function OffresExplorer({
               options={typesStage}
             />
             <Select label="Ville" value={ville} onChange={setVille} options={villes} />
+            <Select
+              label="Publication"
+              value={publication}
+              onChange={setPublication}
+              options={PUBLICATION_OPTIONS}
+            />
+            <button
+              type="button"
+              aria-pressed={favorisSeuls}
+              onClick={() => setFavorisSeuls((v) => !v)}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-1 ring-inset transition ${
+                favorisSeuls
+                  ? "bg-amber-50 text-amber-700 ring-amber-300"
+                  : "text-gray-600 ring-gray-300 hover:ring-amber-300"
+              }`}
+            >
+              <svg
+                className={`h-4 w-4 ${favorisSeuls || nbFavoris ? "text-amber-500" : "text-gray-400"}`}
+                viewBox="0 0 24 24"
+                fill={favorisSeuls ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinejoin="round"
+                  d="M12 3.5l2.6 5.3 5.9.86-4.25 4.14 1 5.86L12 16.9l-5.25 2.76 1-5.86L3.5 9.66l5.9-.86L12 3.5z"
+                />
+              </svg>
+              Mes favoris ({nbFavoris})
+            </button>
             <label className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600">
               <input
                 type="checkbox"
@@ -176,7 +226,9 @@ export default function OffresExplorer({
 
           {filtrees.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
-              Aucune offre ne correspond à ces critères.
+              {favorisSeuls && nbFavoris === 0
+                ? "Vous n'avez pas encore de favoris : cliquez sur l'étoile d'une offre pour la sauvegarder."
+                : "Aucune offre ne correspond à ces critères."}
             </div>
           ) : (
             <>

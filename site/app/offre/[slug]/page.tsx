@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { getOffreBySlug } from "@/lib/db";
 import ShareButton from "@/components/ShareButton";
 import { ChatIcon, CoinIcon } from "@/components/icons";
+import FavoriButton from "@/components/FavoriButton";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -115,7 +116,10 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{offre.poste}</h1>
-            <Badge className={style}>{offre.fenetre}</Badge>
+            <div className="flex items-center gap-3">
+              <FavoriButton slug={offre.slug} avecTexte />
+              <Badge className={style}>{offre.fenetre}</Badge>
+            </div>
           </div>
 
           <p className="mt-2 text-base text-gray-600">

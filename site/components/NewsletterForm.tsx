@@ -5,13 +5,14 @@ import { DOMAINES_NEWSLETTER } from "@/lib/newsletter-domaines";
 import { CheckIcon } from "@/components/icons";
 
 type Etape = "email" | "code" | "confirme" | "already";
-const TOUS_DOMAINES = "Tous domaines";
 
-export default function NewsletterForm() {
+/** villes : celles présentes dans les offres (le serveur refuse les autres). */
+export default function NewsletterForm({ villes = [] }: { villes?: string[] }) {
   const [etape, setEtape] = useState<Etape>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [domaine, setDomaine] = useState(TOUS_DOMAINES);
+  const [domaines, setDomaines] = useState<string[]>([]); // vide = tous domaines
+  const [ville, setVille] = useState("");
   const [honeypot, setHoneypot] = useState(""); // doit rester vide (piège à bots)
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -28,7 +29,8 @@ export default function NewsletterForm() {
         body: JSON.stringify({
           email,
           site_web: honeypot,
-          domaine: domaine === TOUS_DOMAINES ? null : domaine,
+          domaines,
+          ville: ville || null,
         }),
       });
       const data = await res.json();
@@ -136,7 +138,7 @@ export default function NewsletterForm() {
         className="absolute -left-[9999px] h-0 w-0"
         aria-hidden="true"
       />
-      <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
+      <div className="flex w-full flex-col items-center justify-center gap-2 sm:flex-row">
         <input
           type="email"
           required
@@ -146,14 +148,15 @@ export default function NewsletterForm() {
           className="w-full rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:w-64"
         />
         <select
-          value={domaine}
-          onChange={(e) => setDomaine(e.target.value)}
+          value={ville}
+          onChange={(e) => setVille(e.target.value)}
+          aria-label="Ville"
           className="w-full rounded-full border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:w-auto"
         >
-          <option value={TOUS_DOMAINES}>Tous domaines</option>
-          {DOMAINES_NEWSLETTER.map((d) => (
-            <option key={d} value={d}>
-              {d}
+          <option value="">Toutes villes</option>
+          {villes.map((v) => (
+            <option key={v} value={v}>
+              {v}
             </option>
           ))}
         </select>
@@ -165,6 +168,32 @@ export default function NewsletterForm() {
           {loading ? "…" : "Recevoir les nouvelles offres"}
         </button>
       </div>
+      <fieldset className="mt-1 flex max-w-2xl flex-wrap justify-center gap-1.5">
+        <legend className="mb-1.5 w-full text-xs text-gray-500">
+          Domaines qui vous intéressent{" "}
+          <span className="text-gray-400">(aucun sélectionné = tous)</span>
+        </legend>
+        {DOMAINES_NEWSLETTER.map((d) => {
+          const actif = domaines.includes(d);
+          return (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={actif}
+              onClick={() =>
+                setDomaines((prev) => (actif ? prev.filter((x) => x !== d) : [...prev, d]))
+              }
+              className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset transition ${
+                actif
+                  ? "bg-indigo-600 text-white ring-indigo-600"
+                  : "bg-white text-gray-600 ring-gray-300 hover:ring-indigo-400"
+              }`}
+            >
+              {d}
+            </button>
+          );
+        })}
+      </fieldset>
       {erreur ? <p className="text-xs text-red-600">{erreur}</p> : null}
     </form>
   );

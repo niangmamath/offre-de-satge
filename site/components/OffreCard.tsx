@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Offre } from "@/lib/db";
+import FavoriButton from "@/components/FavoriButton";
 import {
   ChartUpIcon,
   CoinIcon,
@@ -102,7 +103,10 @@ export default function OffreCard({ offre }: { offre: Offre }) {
       </div>
 
       <div className="flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
-        <span>{formatDate(offre.date_pub_iso)}</span>
+        <span className="flex items-center gap-2">
+          <FavoriButton slug={offre.slug} className="-my-1" />
+          {formatDate(offre.date_pub_iso)}
+        </span>
         <span className="flex items-center gap-1">
           {offre.source}
           <svg

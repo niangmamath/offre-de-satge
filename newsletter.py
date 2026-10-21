@@ -42,6 +42,12 @@ CREATE TABLE IF NOT EXISTS abonnes (
 # gère sa propre migration côté site/lib/abonnes.ts sur la même colonne.
 MIGRATIONS_SQL = [
     "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS domaine_prefere TEXT",
+    # Plusieurs domaines + une ville (remplacent domaine_prefere, gardé pour
+    # les lignes antérieures ; cf. site/lib/abonnes.ts, même migration).
+    "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS domaines TEXT[]",
+    "ALTER TABLE abonnes ADD COLUMN IF NOT EXISTS ville_preferee TEXT",
+    "UPDATE abonnes SET domaines = ARRAY[domaine_prefere] "
+    "WHERE domaines IS NULL AND domaine_prefere IS NOT NULL",
 ]
 
 MAX_OFFRES_PAR_MAIL = 8
@@ -75,47 +81,54 @@ def _env(nom, defaut=None):
     return v if v else defaut
 
 
-def offres_recentes(cur, jours=7, limite=MAX_OFFRES_PAR_MAIL, domaine=None):
-    """domaine=None -> tous domaines confondus (abonnés sans préférence)."""
-    if domaine:
-        cur.execute(
-            """
-            SELECT poste, entite, ville, slug FROM offres
-            WHERE premiere_detection >= now() - (%s || ' days')::interval
-              AND domaine = %s
-            ORDER BY premiere_detection DESC
-            """,
-            (str(jours), domaine),
-        )
-    else:
-        cur.execute(
-            """
-            SELECT poste, entite, ville, slug FROM offres
-            WHERE premiere_detection >= now() - (%s || ' days')::interval
-            ORDER BY premiere_detection DESC
-            """,
-            (str(jours),),
-        )
+def offres_recentes(cur, jours=7, limite=MAX_OFFRES_PAR_MAIL, domaines=(), ville=None):
+    """domaines vide -> tous domaines ; ville None -> toutes villes."""
+    where = ["premiere_detection >= now() - (%s || ' days')::interval", "masque = FALSE"]
+    params = [str(jours)]
+    if domaines:
+        where.append("domaine = ANY(%s)")
+        params.append(list(domaines))
+    if ville:
+        where.append("ville = %s")
+        params.append(ville)
+    cur.execute(
+        f"""
+        SELECT poste, entite, ville, slug FROM offres
+        WHERE {' AND '.join(where)}
+        ORDER BY premiere_detection DESC
+        """,
+        params,
+    )
     rows = cur.fetchall()
     return rows[:limite], max(0, len(rows) - limite)
 
 
 def abonnes_actifs(cur):
+    """Lignes (id, email, token, domaines, ville_preferee)."""
     cur.execute(
-        "SELECT id, email, token, domaine_prefere FROM abonnes "
+        "SELECT id, email, token, domaines, ville_preferee FROM abonnes "
         "WHERE confirme = TRUE AND actif = TRUE"
     )
     return cur.fetchall()
 
 
-def grouper_par_domaine(abonnes):
-    """{domaine_prefere (ou None = tous domaines) : [abonnés]}. Ne calculer
-    la liste d'offres correspondante qu'UNE FOIS par groupe, pas par
-    abonné (évite de refaire la même requête des dizaines de fois)."""
+def grouper_par_preference(abonnes):
+    """{(domaines triés, ville) : [abonnés]}. Ne calculer la liste d'offres
+    correspondante qu'UNE FOIS par groupe, pas par abonné (évite de refaire
+    la même requête des dizaines de fois)."""
     groupes = {}
     for a in abonnes:
-        groupes.setdefault(a[3], []).append(a)
+        cle = (tuple(sorted(a[3] or [])), a[4] or None)
+        groupes.setdefault(cle, []).append(a)
     return groupes
+
+
+def libelle_preference(domaines, ville):
+    """"" pour tous domaines/toutes villes, sinon ex. "RH, Juridique · Rabat"."""
+    parties = [", ".join(domaines)] if domaines else []
+    if ville:
+        parties.append(ville)
+    return " · ".join(parties)
 
 
 def construire_html(offres, reste, site_url, token, domaine=None):
@@ -172,8 +185,8 @@ def _smtp_connect():
 
 def envoyer_groupe(smtp, from_email, cur, conn, abonnes, offres, reste, site_url,
                     domaine=None, dry_run=False):
-    """abonnes : lignes (id, email, token, domaine_prefere) d'UN SEUL groupe
-    (déjà filtré par grouper_par_domaine) -- reçoivent toutes le MÊME digest
+    """abonnes : lignes (id, email, token, domaines, ville) d'UN SEUL groupe
+    (déjà filtré par grouper_par_preference) -- reçoivent toutes le MÊME digest
     (déjà calculé pour ce groupe précis par l'appelant)."""
     label = domaine or "tous domaines"
     if dry_run:
@@ -183,7 +196,7 @@ def envoyer_groupe(smtp, from_email, cur, conn, abonnes, offres, reste, site_url
         return 0
 
     envoyes = 0
-    for abonne_id, email, token, _ in abonnes:
+    for abonne_id, email, token, *_ in abonnes:
         html = construire_html(offres, reste, site_url, token, domaine)
         sujet = f"{len(offres)} nouvelle(s) offre(s) de stage au Maroc"
         if domaine:
@@ -244,19 +257,18 @@ def main():
 
             try:
                 total = 0
-                # Un groupe par préférence de domaine (None = tous domaines
-                # confondus) : la requête d'offres n'est faite qu'UNE FOIS par
-                # groupe, pas par abonné.
-                for domaine, groupe in grouper_par_domaine(abonnes).items():
-                    offres, reste = offres_recentes(cur, domaine=domaine)
+                # Un groupe par préférence (domaines + ville) : la requête
+                # d'offres n'est faite qu'UNE FOIS par groupe, pas par abonné.
+                for (domaines, ville), groupe in grouper_par_preference(abonnes).items():
+                    offres, reste = offres_recentes(cur, domaines=domaines, ville=ville)
+                    label = libelle_preference(domaines, ville) or None
                     if not offres:
-                        label = domaine or "tous domaines"
-                        print(f"  [newsletter] [{label}] aucune offre neuve depuis "
-                              f"1 semaine — rien envoyé à ce groupe.")
+                        print(f"  [newsletter] [{label or 'tous domaines'}] aucune offre "
+                              f"neuve depuis 1 semaine — rien envoyé à ce groupe.")
                         continue
                     total += envoyer_groupe(
                         smtp, from_email, cur, conn, groupe, offres, reste,
-                        site_url, domaine=domaine, dry_run=dry_run)
+                        site_url, domaine=label, dry_run=dry_run)
                 if total == 0 and not dry_run:
                     print("  [newsletter] aucune offre neuve pour aucun groupe — rien envoyé.")
             finally:
