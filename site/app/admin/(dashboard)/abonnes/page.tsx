@@ -1,5 +1,6 @@
 import { listerAbonnesAdmin } from "@/lib/abonnes";
 import AdminAbonneActions from "@/components/AdminAbonneActions";
+import AdminAbonneMessage from "@/components/AdminAbonneMessage";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR");
@@ -44,7 +45,12 @@ export default async function AdminAbonnesPage() {
                 </td>
                 <td className="px-4 py-2.5 text-xs text-gray-500">{formatDate(a.cree_le)}</td>
                 <td className="px-4 py-2.5">
-                  {a.confirme && a.actif ? <AdminAbonneActions id={a.id} /> : null}
+                  {a.confirme && a.actif ? (
+                    <div className="flex items-center justify-end gap-4 whitespace-nowrap">
+                      <AdminAbonneMessage id={a.id} email={a.email} />
+                      <AdminAbonneActions id={a.id} />
+                    </div>
+                  ) : null}
                 </td>
               </tr>
             ))}

@@ -274,3 +274,17 @@ export async function desabonnerParId(id: number): Promise<boolean> {
   );
   return (res.rowCount ?? 0) > 0;
 }
+
+/** Abonné confirmé et actif (null sinon) : l'admin n'écrit jamais à une
+ * adresse non confirmée ou désabonnée. */
+export async function getAbonneActifParId(
+  id: number
+): Promise<{ email: string; token: string } | null> {
+  const pool = getPool();
+  if (!pool) return null;
+  const { rows } = await pool.query<{ email: string; token: string }>(
+    "SELECT email, token FROM abonnes WHERE id = $1 AND confirme = TRUE AND actif = TRUE",
+    [id]
+  );
+  return rows[0] ?? null;
+}
