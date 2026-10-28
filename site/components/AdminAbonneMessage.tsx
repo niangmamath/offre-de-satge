@@ -2,10 +2,42 @@
 
 import { useRef, useState } from "react";
 
-export default function AdminAbonneMessage({ id, email }: { id: number; email: string }) {
+const SUJET_RELANCE = "Votre inscription à Stages au Maroc : toutes nos excuses";
+
+function messageRelance(dateInscription: string, preference: string): string {
+  return `Bonjour,
+
+Le ${dateInscription}, vous vous êtes inscrit(e) à la newsletter Stages au Maroc pour recevoir les nouvelles offres de stage${preference ? ` (${preference})` : ""}. Merci pour votre confiance !
+
+À ce moment-là, un problème technique sur notre service d'envoi d'e-mails a empêché l'envoi de votre code de confirmation : votre inscription n'a donc pas pu être finalisée. Toutes nos excuses pour ce désagrément.
+
+Le problème est maintenant résolu. Pour recevoir les offres chaque semaine, il vous suffit de vous réinscrire (moins d'une minute) depuis le bas de la page d'accueil du site : saisissez votre adresse, puis le code reçu par e-mail. Vous pouvez désormais choisir plusieurs domaines et une ville.
+
+Bonne recherche de stage, et encore désolés.
+
+L'équipe Stages au Maroc`;
+}
+
+/** enAttente : inscription jamais confirmée -> formulaire pré-rempli avec
+ * le message d'excuse + invitation à se réinscrire (modifiable). */
+export default function AdminAbonneMessage({
+  id,
+  email,
+  enAttente = false,
+  dateInscription = "",
+  preference = "",
+}: {
+  id: number;
+  email: string;
+  enAttente?: boolean;
+  dateInscription?: string;
+  preference?: string;
+}) {
   const dialogue = useRef<HTMLDialogElement>(null);
-  const [sujet, setSujet] = useState("");
-  const [message, setMessage] = useState("");
+  const [sujet, setSujet] = useState(enAttente ? SUJET_RELANCE : "");
+  const [message, setMessage] = useState(
+    enAttente ? messageRelance(dateInscription, preference) : ""
+  );
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState("");
   const [envoye, setEnvoye] = useState(false);
@@ -32,8 +64,6 @@ export default function AdminAbonneMessage({ id, email }: { id: number; email: s
         return;
       }
       setEnvoye(true);
-      setSujet("");
-      setMessage("");
     } catch {
       setErreur("L'envoi a échoué, réessayez.");
     } finally {
@@ -51,7 +81,7 @@ export default function AdminAbonneMessage({ id, email }: { id: number; email: s
         onClick={ouvrir}
         className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
       >
-        Envoyer un message
+        {enAttente ? "Relancer l'inscription" : "Envoyer un message"}
       </button>
 
       <dialog
@@ -64,7 +94,9 @@ export default function AdminAbonneMessage({ id, email }: { id: number; email: s
         <form onSubmit={envoyer} className="flex flex-col gap-3 p-5 text-left">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Message à un abonné</h2>
+              <h2 className="text-base font-semibold text-gray-900">
+                {enAttente ? "Relancer une inscription en attente" : "Message à un abonné"}
+              </h2>
               <p className="text-xs text-gray-500">{email}</p>
             </div>
             <button
@@ -94,7 +126,7 @@ export default function AdminAbonneMessage({ id, email }: { id: number; email: s
               />
               <textarea
                 required
-                rows={7}
+                rows={enAttente ? 14 : 7}
                 maxLength={5000}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -102,7 +134,8 @@ export default function AdminAbonneMessage({ id, email }: { id: number; email: s
                 className={`${champ} resize-y`}
               />
               <p className="text-xs text-gray-400">
-                Un bouton « Voir les offres » et le lien de désabonnement sont ajoutés automatiquement.
+                Un bouton « {enAttente ? "Me réinscrire" : "Voir les offres"} » et le lien de
+                désabonnement sont ajoutés automatiquement.
               </p>
               {erreur ? <p className="text-sm text-red-600">{erreur}</p> : null}
               <div className="flex justify-end gap-2">

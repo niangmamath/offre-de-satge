@@ -18,7 +18,7 @@ function echapper(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-// Message libre de l'admin à UN abonné (confirmé et actif uniquement).
+// Message libre de l'admin à UN abonné actif (confirmé ou en attente).
 export async function POST(request: Request) {
   if (!(await estAuthentifie())) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   const abonne = await getAbonneActifParId(body.id);
   if (!abonne) {
-    return NextResponse.json({ error: "Abonné introuvable, non confirmé ou désabonné." }, { status: 404 });
+    return NextResponse.json({ error: "Abonné introuvable ou désabonné." }, { status: 404 });
   }
 
   const transport = getTransport();
@@ -64,11 +64,15 @@ export async function POST(request: Request) {
           </div>
           <div style="border:1px solid #eee;border-top:none;padding:20px 24px;border-radius:0 0 12px 12px;">
             <div style="white-space:pre-wrap;color:#222;font-size:14px;line-height:1.5;">${echapper(message)}</div>
-            <a href="${siteUrl}" style="display:block;text-align:center;margin-top:20px;background:linear-gradient(135deg,#4338ca,#7c3aed);color:#fff;padding:12px;border-radius:999px;text-decoration:none;font-weight:600;font-size:14px;">
-              Voir les offres
+            <a href="${abonne.confirme ? siteUrl : `${siteUrl}/#newsletter`}" style="display:block;text-align:center;margin-top:20px;background:linear-gradient(135deg,#4338ca,#7c3aed);color:#fff;padding:12px;border-radius:999px;text-decoration:none;font-weight:600;font-size:14px;">
+              ${abonne.confirme ? "Voir les offres" : "Me réinscrire"}
             </a>
             <p style="color:#999;font-size:11px;text-align:center;margin-top:24px;">
-              Vous recevez ce mail car vous êtes abonné(e) à la newsletter Stages au Maroc.<br>
+              ${
+                abonne.confirme
+                  ? "Vous recevez ce mail car vous êtes abonné(e) à la newsletter Stages au Maroc."
+                  : "Vous recevez ce mail car vous avez commencé une inscription à la newsletter Stages au Maroc."
+              }<br>
               <a href="${siteUrl}/api/desabonner?token=${abonne.token}" style="color:#999;">Se désabonner</a>
             </p>
           </div>

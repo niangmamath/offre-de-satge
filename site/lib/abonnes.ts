@@ -275,15 +275,16 @@ export async function desabonnerParId(id: number): Promise<boolean> {
   return (res.rowCount ?? 0) > 0;
 }
 
-/** Abonné confirmé et actif (null sinon) : l'admin n'écrit jamais à une
- * adresse non confirmée ou désabonnée. */
+/** Abonné actif, confirmé OU en attente (null si désabonné) : l'admin peut
+ * relancer une inscription restée en attente (code jamais reçu pendant la
+ * panne SMTP de 09/2026), mais n'écrit jamais à une adresse désabonnée. */
 export async function getAbonneActifParId(
   id: number
-): Promise<{ email: string; token: string } | null> {
+): Promise<{ email: string; token: string; confirme: boolean } | null> {
   const pool = getPool();
   if (!pool) return null;
-  const { rows } = await pool.query<{ email: string; token: string }>(
-    "SELECT email, token FROM abonnes WHERE id = $1 AND confirme = TRUE AND actif = TRUE",
+  const { rows } = await pool.query<{ email: string; token: string; confirme: boolean }>(
+    "SELECT email, token, confirme FROM abonnes WHERE id = $1 AND actif = TRUE",
     [id]
   );
   return rows[0] ?? null;
