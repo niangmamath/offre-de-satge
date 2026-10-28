@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import { estAuthentifie } from "@/lib/admin";
 import { getAbonneActifParId } from "@/lib/abonnes";
 import { getTransport, fromAddress, logoSvg } from "@/lib/mailer";
+import { siteUrl } from "@/lib/site-url";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 const SUJET_MAX = 150;
 const MESSAGE_MAX = 5000;

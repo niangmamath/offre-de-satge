@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { verifyOtp } from "@/lib/abonnes";
 import { getTransport, fromAddress, logoSvg } from "@/lib/mailer";
+import { siteUrl } from "@/lib/site-url";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 async function envoyerBienvenue(email: string, token: string) {
   const transport = getTransport();

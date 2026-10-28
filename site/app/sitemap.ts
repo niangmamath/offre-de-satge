@@ -1,10 +1,8 @@
 import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { getOffres } from "@/lib/db";
+import { siteUrl } from "@/lib/site-url";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Sans connection(), Next.js prérendrait ce sitemap une fois au build et

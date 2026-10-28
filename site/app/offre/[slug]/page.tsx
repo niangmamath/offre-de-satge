@@ -6,10 +6,8 @@ import { getOffreBySlug } from "@/lib/db";
 import ShareButton from "@/components/ShareButton";
 import { ChatIcon, CoinIcon } from "@/components/icons";
 import FavoriButton from "@/components/FavoriButton";
+import { siteUrl } from "@/lib/site-url";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 const FENETRE_STYLE: Record<string, string> = {
   NOUVEAU: "bg-emerald-100 text-emerald-800 ring-emerald-600/20",

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
+import { siteUrl } from "@/lib/site-url";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,12 +15,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// VERCEL_URL est injectée automatiquement par Vercel (sans protocole) sur
-// chaque déploiement ; NEXT_PUBLIC_SITE_URL permet de forcer un domaine
-// définitif une fois configuré (custom domain).
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+// Adresse publique : cf. lib/site-url.ts.
 
 const title = "Stages au Maroc — toutes les offres, tous domaines";
 const description =
