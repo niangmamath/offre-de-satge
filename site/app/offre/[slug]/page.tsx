@@ -7,6 +7,7 @@ import ShareButton from "@/components/ShareButton";
 import { ChatIcon, CoinIcon } from "@/components/icons";
 import FavoriButton from "@/components/FavoriButton";
 import { siteUrl } from "@/lib/site-url";
+import { infoVille } from "@/lib/geo-maroc";
 
 
 const FENETRE_STYLE: Record<string, string> = {
@@ -54,25 +55,45 @@ export async function generateMetadata(props: PageProps<"/offre/[slug]">): Promi
   };
 }
 
+// Au-delà, l'offre est très probablement pourvue/expirée : on ne la déclare
+// plus à Google Jobs (qui pénalise les offres expirées encore balisées).
+const VALIDITE_JOURS = 30;
+
 function JobPostingJsonLd({ offre }: { offre: NonNullable<Awaited<ReturnType<typeof getOffreBySlug>>> }) {
+  if (!offre.date_pub_iso || offre.age_jours === null || offre.age_jours > VALIDITE_JOURS) {
+    return null;
+  }
+  // Pas de date d'expiration dans les sources : estimation publication + 30 j.
+  const fin = new Date(`${offre.date_pub_iso}T23:59:59Z`);
+  fin.setUTCDate(fin.getUTCDate() + VALIDITE_JOURS);
+
+  const villeConnue = offre.ville && !offre.ville.startsWith("Maroc") ? offre.ville : null;
+  const geo = infoVille(villeConnue);
+  // streetAddress et baseSalary volontairement absents : les annonces ne les
+  // donnent pas, et Google sanctionne les valeurs inventées.
   const json = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: offre.poste,
     description: offre.description || offre.poste,
-    datePosted: offre.date_pub_iso || undefined,
+    datePosted: offre.date_pub_iso,
+    validThrough: fin.toISOString(),
     employmentType: "INTERN",
     hiringOrganization: { "@type": "Organization", name: offre.entite || "Non précisé" },
     jobLocation: {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
-        addressLocality: offre.ville || "Maroc",
+        ...(villeConnue ? { addressLocality: villeConnue } : {}),
+        ...(geo ? { addressRegion: geo.region } : {}),
+        ...(geo?.codePostal ? { postalCode: geo.codePostal } : {}),
         addressCountry: "MA",
       },
     },
-    directApply: true,
-    url: offre.url,
+    // La candidature se fait sur le site d'origine (LinkedIn, Rekrute...),
+    // pas ici : directApply doit être false (true = déclaration trompeuse).
+    directApply: false,
+    url: `${siteUrl}/offre/${offre.slug}`,
   };
   return (
     // eslint-disable-next-line react/no-danger
