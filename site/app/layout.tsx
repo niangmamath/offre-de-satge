@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { siteUrl } from "@/lib/site-url";
+
+// Google AdSense — publisher client ID. Chargé en afterInteractive pour
+// ne pas bloquer le first paint, et avec `crossOrigin="anonymous"` tel
+// que requis par la doc AdSense. Un seul chargement du script par page
+// grâce à l'id partagé.
+const ADSENSE_CLIENT = "ca-pub-7092087136703483";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,6 +63,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <Analytics />
         <SpeedInsights />
+        <Script
+          id="adsbygoogle-loader"
+          async
+          strategy="afterInteractive"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+        />
       </body>
     </html>
   );
