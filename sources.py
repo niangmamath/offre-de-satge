@@ -249,7 +249,14 @@ def _stagiaires_parse_detail(url, html):
         except ValueError:
             pass
 
-    indemnite = _stagiaires_indemnite(data.get("baseSalary"))
+    # baseSalary de Stagiaires.ma est IDENTIQUE pour toutes les offres
+    # (vérifié 2026-11-15 : "8000-25000 MAD/mois" sur chaque fiche) --
+    # c'est un placeholder générique pour satisfaire la validation Google
+    # for Jobs, pas la vraie indemnité par offre. Afficher cette valeur
+    # induirait l'utilisateur en erreur (et le montant lui-même, 8-25k
+    # MAD, n'est pas crédible pour un stage au Maroc). On l'ignore
+    # systématiquement -> tant qu'aucune source fiable ne la donne, on
+    # laisse le champ vide plutôt que d'inventer.
 
     return {
         "poste": data.get("title", ""),
@@ -265,13 +272,17 @@ def _stagiaires_parse_detail(url, html):
         "republication": "",
         "open_confirme": True,  # listée au sitemap = considérée active par le site
         "source": "Stagiaires.ma",
-        "indemnite": indemnite,
+        "indemnite": "",
     }
 
 
 _UNITS = {"MONTH": "mois", "HOUR": "heure", "YEAR": "an", "WEEK": "semaine"}
 
 
+# NOTE 2026-11-15 : plus appele par _stagiaires_parse_detail (cf. commentaire
+# la-bas -- baseSalary generique chez Stagiaires.ma). Conserve ici au cas ou
+# une autre source expose un jour une vraie indemnite au format JSON-LD
+# PriceSpecification.
 def _stagiaires_indemnite(base_salary):
     """Formate le champ JSON-LD baseSalary (indemnité de stage, quand
     connue) en texte affichable, ex. "8000-25000 MAD/mois". Aucune autre
