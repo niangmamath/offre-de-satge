@@ -51,6 +51,12 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   alternates: { canonical: "/" },
+  // Meta tag dedie a la verification du compte AdSense. Complement du
+  // script adsbygoogle.js (ci-dessous dans <body>) — AdSense cherche
+  // l'un OU l'autre lors de la validation initiale du site ; avoir les
+  // deux evite les faux negatifs quand le crawler arrive avant que le
+  // JS externe soit injecte par Next.
+  other: { "google-adsense-account": "ca-pub-7092087136703483" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
