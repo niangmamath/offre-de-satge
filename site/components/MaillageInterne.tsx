@@ -62,12 +62,18 @@ export default async function MaillageInterne() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 href="/stages/pfe-2027"
                 className="inline-block rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
               >
                 Campagne PFE 2026-2027 →
+              </Link>
+              <Link
+                href="/nouveautes"
+                className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+              >
+                Nouveautés 7 jours →
               </Link>
             </div>
           </div>

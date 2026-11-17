@@ -75,6 +75,7 @@ export default async function VillePage({ params }: { params: Params }) {
         </p>
       }
       offres={offres}
+      contexteFAQ={{ type: "ville", nom: trouve.ville }}
     />
   );
 }

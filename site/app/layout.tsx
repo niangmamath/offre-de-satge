@@ -52,7 +52,10 @@ export const metadata: Metadata = {
     description,
   },
   robots: { index: true, follow: true },
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: "/",
+    types: { "application/rss+xml": "/feed.xml" },
+  },
   // Meta tag dedie a la verification du compte AdSense. Complement du
   // script adsbygoogle.js (ci-dessous dans <body>) — AdSense cherche
   // l'un OU l'autre lors de la validation initiale du site ; avoir les

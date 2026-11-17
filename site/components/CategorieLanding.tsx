@@ -2,7 +2,14 @@ import Link from "next/link";
 import type { Offre } from "@/lib/db";
 import { siteUrl } from "@/lib/site-url";
 import OffreCard from "./OffreCard";
+import CategorieFAQ from "./CategorieFAQ";
 import { CapIcon } from "@/components/icons";
+
+type ContexteFAQ =
+  | { type: "ville"; nom: string }
+  | { type: "domaine"; nom: string }
+  | { type: "entreprise"; nom: string }
+  | { type: "pfe2027" };
 
 type Props = {
   h1: string;
@@ -11,6 +18,7 @@ type Props = {
   offres: Offre[];
   canonicalPath: string; // ex: "/stages/casablanca"
   breadcrumb: { nom: string; url: string }[];
+  contexteFAQ?: ContexteFAQ;
 };
 
 // Page de landing SEO pour une categorie (ville, domaine, entreprise, campagne).
@@ -24,6 +32,7 @@ export default function CategorieLanding({
   offres,
   canonicalPath,
   breadcrumb,
+  contexteFAQ,
 }: Props) {
   const itemListLd = {
     "@context": "https://schema.org",
@@ -106,6 +115,8 @@ export default function CategorieLanding({
             </Link>
           </div>
         )}
+
+        {contexteFAQ ? <CategorieFAQ offres={offres} contexte={contexteFAQ} /> : null}
       </main>
 
       <footer className="mt-auto border-t border-gray-200 bg-white">

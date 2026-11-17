@@ -50,6 +50,7 @@ export default async function PFE2027Page() {
         </p>
       }
       offres={offres}
+      contexteFAQ={{ type: "pfe2027" }}
     />
   );
 }

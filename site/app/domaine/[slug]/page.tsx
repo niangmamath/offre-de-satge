@@ -72,6 +72,7 @@ export default async function DomainePage({ params }: { params: Params }) {
         </p>
       }
       offres={offres}
+      contexteFAQ={{ type: "domaine", nom: trouve.domaine }}
     />
   );
 }

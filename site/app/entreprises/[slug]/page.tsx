@@ -70,6 +70,7 @@ export default async function EntreprisePage({ params }: { params: Params }) {
         </p>
       }
       offres={offres}
+      contexteFAQ={{ type: "entreprise", nom }}
     />
   );
 }
