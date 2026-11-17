@@ -70,15 +70,26 @@ export default async function Home() {
           </p>
           <NewsletterForm villes={villesNewsletter} />
         </div>
-        <div className="border-t border-gray-100 px-4 py-6 text-center text-xs text-gray-400 sm:px-6">
-          Offres collectées automatiquement (LinkedIn, Rekrute.com) — vérifiez toujours
-          les conditions auprès de l&apos;entreprise avant de postuler.
-          <span className="mt-2 block">
+        <div className="border-t border-gray-100 px-4 py-6 text-center text-xs text-gray-400 sm:px-6 space-y-2">
+          <p>
+            Offres collectées automatiquement (LinkedIn, Rekrute.com) — vérifiez toujours
+            les conditions auprès de l&apos;entreprise avant de postuler.
+          </p>
+          <p>
             Une idée pour améliorer le site, un problème ?{" "}
             <Link href="/contact" className="font-medium text-indigo-600 hover:underline">
               Contactez-nous
             </Link>
-          </span>
+          </p>
+          <p>
+            <Link href="/mentions-legales" className="hover:text-gray-600">
+              Mentions légales
+            </Link>
+            {" · "}
+            <Link href="/politique-confidentialite" className="hover:text-gray-600">
+              Politique de confidentialité
+            </Link>
+          </p>
         </div>
       </footer>
     </div>
