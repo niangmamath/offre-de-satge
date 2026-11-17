@@ -51,6 +51,22 @@ function formatDate(iso: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
+// Certains titres LinkedIn sont vides de sens tout seuls ("Stagiaire",
+// "Stage", "PFE") : la fiche reste utile mais le lien dans la liste n'aide
+// pas l'utilisateur a choisir. On enrichit a l'affichage (DB inchangee)
+// avec l'entreprise ou le domaine quand on en a un.
+const POSTES_GENERIQUES = new Set([
+  "stagiaire", "stage", "stage pfe", "pfe", "stagiaire pfe",
+  "offre de stage", "stage pre-embauche",
+]);
+function titreAffichable(offre: Offre): string {
+  const poste = (offre.poste || "").trim();
+  if (!POSTES_GENERIQUES.has(poste.toLowerCase())) return poste;
+  if (offre.entite) return `${poste} — ${offre.entite}`;
+  if (offre.domaine && offre.domaine !== "Autre") return `${poste} — ${offre.domaine}`;
+  return poste;
+}
+
 export default function OffreCard({ offre }: { offre: Offre }) {
   const style = FENETRE_STYLE[offre.fenetre] ?? FENETRE_STYLE.INCONNUE;
   const estNouvelle = offre.fenetre === "NOUVEAU";
@@ -67,7 +83,7 @@ export default function OffreCard({ offre }: { offre: Offre }) {
         <div className="flex items-start gap-2">
           <Icone className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
           <h3 className="text-sm font-semibold text-gray-900 group-hover:text-indigo-700">
-            {offre.poste}
+            {titreAffichable(offre)}
           </h3>
         </div>
         {estNouvelle ? null : <Badge className={`shrink-0 ${style.badge}`}>{offre.fenetre}</Badge>}

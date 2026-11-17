@@ -99,6 +99,10 @@ export default function MentionsLegales() {
                 <strong>Rekrute</strong> —{" "}
                 <a href="https://www.rekrute.com" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">rekrute.com</a>
               </li>
+              <li>
+                <strong>Stagiaires.ma</strong> —{" "}
+                <a href="https://www.stagiaires.ma" className="text-indigo-600 hover:underline" target="_blank" rel="noreferrer">stagiaires.ma</a>
+              </li>
             </ul>
             <p>
               Chaque fiche affichée porte le nom de sa source et un lien

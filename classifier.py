@@ -263,6 +263,16 @@ DOMAINE_KW = {
         "chef de produit", "digital marketing", "sales", "pre-sales",
         "customer service", "service client", "relation client",
         "community manager",
+        # Manquants historiques : les titres LinkedIn "Market Intelligence &
+        # Lead Generation" partaient en Ingenierie (via "engineer" dans la
+        # description) faute de match au titre. "market intelligence" doit
+        # etre pris tel quel (le simple mot "marketing" ne couvre pas
+        # "market" a cause des word boundaries de _DOMAINE_RE).
+        "market intelligence", "lead generation", "lead gen",
+        "prospection", "prospecting", "veille concurrentielle",
+        "brand", "e-commerce", "ecommerce", "seo", "sea", "sem",
+        "social media", "content creator", "copywriting", "copywriter",
+        "customer experience", "crm", "pricing",
     ],
     "RH": [
         "ressources humaines", " rh ", " hr ", "human resources",

@@ -39,6 +39,30 @@ export async function getOffres(): Promise<Offre[] | null> {
   return rows;
 }
 
+/** Variante "carte" : ne renvoie QUE les champs utilises par OffreCard
+ * et OffresExplorer, pour alleger le bundle du home. OffresExplorer est
+ * un composant client, donc chaque champ de chaque offre est serialise
+ * dans le HTML pour l'hydratation (600 offres * ~460 octets = ~280 Ko
+ * rien qu'en donnees JSON). On vire : url (le lien va vers /offre/slug),
+ * candidats, premiere_detection, derniere_verification -- aucun n'est
+ * utilise cote client. Description tronquee a 160 chars (line-clamp-2
+ * ne montre jamais plus). Gain mesure : ~180 octets/ligne -> ~110 Ko. */
+export async function getOffresCartes(): Promise<Offre[] | null> {
+  const pool = getPool();
+  if (!pool) return null;
+  const { rows } = await pool.query<Offre>(
+    `SELECT '' AS url, slug, poste, entite, ville,
+            LEFT(description, 160) AS description,
+            domaine, type_stage, duree, source, date_pub_iso, age_jours,
+            fenetre, NULL::int AS candidats, indemnite,
+            '' AS premiere_detection, '' AS derniere_verification
+     FROM offres
+     WHERE masque = FALSE
+     ORDER BY date_pub_iso DESC NULLS LAST, premiere_detection DESC`
+  );
+  return rows;
+}
+
 /** Une offre par son slug (page de détail), ou null si absente/base non
  * configurée — la page appelante distingue les deux via getPool(). */
 export async function getOffreBySlug(slug: string): Promise<Offre | null> {

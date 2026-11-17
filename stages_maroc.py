@@ -353,10 +353,36 @@ def _entite_depuis_url(url):
     return m.group(1).replace("-", " ").strip()
 
 
+# LinkedIn renvoie le nom de la "company page parent" (marque mondiale),
+# pas forcement l'entite legale locale : "PwC Brasil" apparait alors que
+# l'offre est a Casablanca, idem "KPMG US", "Deloitte France". On strip
+# ces suffixes pays quand l'offre est localisee au Maroc -- fiable sur
+# notre perimetre et evite des pages /entreprises/pwc-brasil polluees.
+_SUFFIXES_PAYS = (
+    "Brasil", "Brazil", "France", "India", "Deutschland", "Germany",
+    "Mexico", "Mexique", "Italia", "Italy", "Espana", "Espana",
+    "Espagne", "Spain", "US", "USA", "UK", "Canada", "Switzerland",
+    "Suisse", "Portugal", "Belgium", "Belgique", "Nederland",
+    "Netherlands", "Australia", "China", "Japan",
+)
+_SUFFIX_PAYS_RE = re.compile(
+    r"\s+(?:" + "|".join(re.escape(p) for p in _SUFFIXES_PAYS) + r")\s*$",
+    re.IGNORECASE,
+)
+
+
+def _nettoyer_entite(entite):
+    """Retire un suffixe pays final ('PwC Brasil' -> 'PwC'). Idempotent."""
+    if not entite:
+        return entite
+    nettoyee = _SUFFIX_PAYS_RE.sub("", entite).strip()
+    return nettoyee or entite  # jamais vider si tout le nom etait un pays
+
+
 def to_annonce(card, detail):
     iso = str(card.get("publication") or "")
     iso = iso[:10] if re.match(r"\d{4}-\d{2}-\d{2}", iso) else ""
-    entite = card.get("entite", "") or _entite_depuis_url(card.get("url", ""))
+    entite = _nettoyer_entite(card.get("entite", "")) or _entite_depuis_url(card.get("url", ""))
     emp = ""
     for lab, val in (detail.get("crit") or {}).items():
         if "type" in lab and "emploi" in lab:

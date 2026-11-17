@@ -26,7 +26,7 @@ const geistMono = Geist_Mono({
 
 const title = "Stages au Maroc — offres PFE 2026-2027, pré-embauche, été";
 const description =
-  "Veille automatisée des offres de stage au Maroc : PFE 2026-2027, pré-embauche, stages d'été et initiation. Toutes villes (Casablanca, Rabat, Tanger, Marrakech, Agadir, Fès) et tous domaines (informatique, data, ingénierie, finance, marketing, RH, audit). Mis à jour en continu depuis LinkedIn et Rekrute.com.";
+  "Veille automatisée des offres de stage au Maroc : PFE 2026-2027, pré-embauche, stages d'été et initiation. Toutes villes (Casablanca, Rabat, Tanger, Marrakech, Agadir, Fès) et tous domaines (informatique, data, ingénierie, finance, marketing, RH, audit). Mis à jour en continu depuis LinkedIn, Rekrute.com et Stagiaires.ma.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

@@ -11,12 +11,8 @@ export const revalidate = 3600;
 
 type Params = Promise<{ ville: string }>;
 
-// On re-genere la liste quand la base change. Les 20 villes les plus fournies
-// sont pre-rendues au build ; les autres sont rendues a la volee puis cachees.
-export async function generateStaticParams() {
-  const villes = await getVillesAvecCompte();
-  return villes.slice(0, 20).map((v) => ({ ville: v.slug }));
-}
+// Pas de generateStaticParams : trop de pages en parallele au build
+// saturaient Neon. ISR a la volee suffit, avec revalidate=3600.
 
 async function resoudreVille(slug: string): Promise<{ ville: string; n: number } | null> {
   const toutes = await getVillesAvecCompte();

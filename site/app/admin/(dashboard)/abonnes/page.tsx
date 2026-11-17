@@ -2,6 +2,8 @@ import { listerAbonnesAdmin } from "@/lib/abonnes";
 import AdminAbonneActions from "@/components/AdminAbonneActions";
 import AdminAbonneMessage from "@/components/AdminAbonneMessage";
 
+export const dynamic = "force-dynamic";
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR");
 }

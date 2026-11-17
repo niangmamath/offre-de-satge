@@ -10,7 +10,7 @@ const PATH = "/nouveautes";
 export const metadata: Metadata = {
   title: "Nouvelles offres de stage au Maroc — 7 derniers jours",
   description:
-    "Toutes les offres de stage publiées cette semaine au Maroc : PFE, pré-embauche, été, tous domaines. Collectées en continu depuis LinkedIn et Rekrute.",
+    "Toutes les offres de stage publiées cette semaine au Maroc : PFE, pré-embauche, été, tous domaines. Collectées en continu depuis LinkedIn, Rekrute et Stagiaires.ma.",
   keywords: [
     "nouveaux stages Maroc",
     "offres de stage récentes",

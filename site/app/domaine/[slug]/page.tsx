@@ -11,10 +11,8 @@ export const revalidate = 3600;
 
 type Params = Promise<{ slug: string }>;
 
-export async function generateStaticParams() {
-  const domaines = await getDomainesAvecCompte();
-  return domaines.map((d) => ({ slug: d.slug }));
-}
+// ISR a la volee (pas de pre-build): Neon ne tenait pas 10+ pages en
+// parallele au build.
 
 async function resoudreDomaine(slug: string) {
   const toutes = await getDomainesAvecCompte();

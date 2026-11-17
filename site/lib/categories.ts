@@ -1,6 +1,14 @@
+import { cache } from "react";
 import { getPool } from "./pg";
 import type { Offre } from "./db";
 import { slugifyLibre } from "./slug";
+
+// React cache() memoise par requete : pendant `next build` les 30+ pages
+// statiques (villes, domaines, entreprises) partagent une seule execution
+// de chaque lookup, sinon on faisait 150-200 queries sur Neon et le worker
+// Vercel timeout au bout de 60s. En runtime c'est la meme chose : une seule
+// requete par requete HTTP, meme si la page et le sitemap appellent tous
+// les deux getVillesAvecCompte().
 
 // Helpers de regroupement pour les pages de categorie SEO (ville, domaine,
 // entreprise, campagne PFE). Toutes filtrent masque=FALSE, comme getOffres(),
@@ -16,7 +24,7 @@ const SELECT_OFFRE = `
 
 // --- Villes ---------------------------------------------------------------
 
-export async function getVillesAvecCompte(): Promise<{ ville: string; slug: string; n: number }[]> {
+export const getVillesAvecCompte = cache(async (): Promise<{ ville: string; slug: string; n: number }[]> => {
   const pool = getPool();
   if (!pool) return [];
   const { rows } = await pool.query<{ ville: string; n: string }>(
@@ -26,7 +34,7 @@ export async function getVillesAvecCompte(): Promise<{ ville: string; slug: stri
      ORDER BY n DESC, ville ASC`
   );
   return rows.map((r) => ({ ville: r.ville, slug: slugifyLibre(r.ville), n: Number(r.n) }));
-}
+});
 
 export async function getOffresParVille(ville: string): Promise<Offre[]> {
   const pool = getPool();
@@ -41,7 +49,7 @@ export async function getOffresParVille(ville: string): Promise<Offre[]> {
 
 // --- Domaines -------------------------------------------------------------
 
-export async function getDomainesAvecCompte(): Promise<{ domaine: string; slug: string; n: number }[]> {
+export const getDomainesAvecCompte = cache(async (): Promise<{ domaine: string; slug: string; n: number }[]> => {
   const pool = getPool();
   if (!pool) return [];
   const { rows } = await pool.query<{ domaine: string; n: string }>(
@@ -51,7 +59,7 @@ export async function getDomainesAvecCompte(): Promise<{ domaine: string; slug: 
      ORDER BY n DESC, domaine ASC`
   );
   return rows.map((r) => ({ domaine: r.domaine, slug: slugifyLibre(r.domaine), n: Number(r.n) }));
-}
+});
 
 export async function getOffresParDomaine(domaine: string): Promise<Offre[]> {
   const pool = getPool();
@@ -69,7 +77,7 @@ export async function getOffresParDomaine(domaine: string): Promise<Offre[]> {
 // entreprise ferait doublon avec la fiche unique, Google penalise ce type
 // de thin content).
 
-export async function getEntitesAvecCompte(seuil = 2): Promise<{ entite: string; slug: string; n: number }[]> {
+export const getEntitesAvecCompte = cache(async (seuil = 2): Promise<{ entite: string; slug: string; n: number }[]> => {
   const pool = getPool();
   if (!pool) return [];
   const { rows } = await pool.query<{ entite: string; n: string }>(
@@ -80,7 +88,7 @@ export async function getEntitesAvecCompte(seuil = 2): Promise<{ entite: string;
     [seuil]
   );
   return rows.map((r) => ({ entite: r.entite, slug: slugifyLibre(r.entite), n: Number(r.n) }));
-}
+});
 
 export async function getEntiteParSlug(slug: string): Promise<string | null> {
   const toutes = await getEntitesAvecCompte(1);

@@ -12,13 +12,10 @@ export const revalidate = 3600;
 
 type Params = Promise<{ slug: string }>;
 
-// Seules les entreprises avec >=2 offres sont pre-rendues : une page par
-// entreprise unique ferait doublon avec la fiche d'offre et serait du thin
-// content pour Google (cf. seuil=2 dans getEntitesAvecCompte).
-export async function generateStaticParams() {
-  const entites = await getEntitesAvecCompte(2);
-  return entites.slice(0, 50).map((e) => ({ slug: e.slug }));
-}
+// Pas de generateStaticParams : les 50+ pre-rendus se faisaient tous en
+// parallele au build et saturaient Neon (free tier -> timeout 60s par page
+// a repetition). ISR a la volee : premier hit = 1-2s (chaud ensuite 1h).
+// Google decouvre les URLs via le sitemap, la couverture reste identique.
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;

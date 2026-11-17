@@ -4,6 +4,8 @@ import { getAbonnesStats, type AbonnesStats } from "@/lib/abonnes";
 import { compterMessagesNonTraites } from "@/lib/messages";
 import AdminTriggerButtons from "@/components/AdminTriggerButtons";
 
+export const dynamic = "force-dynamic";
+
 function Carte({ titre, children }: { titre: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

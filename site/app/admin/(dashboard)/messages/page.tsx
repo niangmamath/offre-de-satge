@@ -1,6 +1,8 @@
 import { listerMessages } from "@/lib/messages";
 import AdminMessageActions from "@/components/AdminMessageActions";
 
+export const dynamic = "force-dynamic";
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("fr-FR", {
     dateStyle: "medium",

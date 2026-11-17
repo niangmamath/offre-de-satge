@@ -2,6 +2,11 @@ import Link from "next/link";
 import { getAllOffresAdmin } from "@/lib/db";
 import AdminOffreActions from "@/components/AdminOffreActions";
 
+// Admin : jamais pre-rendu au build (DB chargee, auth cote cookie,
+// contenu qui change en continu). Sans ce flag Next tentait de rendre
+// cette page lors de `next build` et timeout sur Neon cold start.
+export const dynamic = "force-dynamic";
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR");
 }

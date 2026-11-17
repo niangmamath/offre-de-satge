@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { getDerniereMaj, getOffres, type Offre } from "@/lib/db";
+import { getDerniereMaj, getOffresCartes, type Offre } from "@/lib/db";
 import OffresExplorer from "@/components/OffresExplorer";
 import NewsletterForm from "@/components/NewsletterForm";
 import MaillageInterne from "@/components/MaillageInterne";
@@ -31,7 +31,7 @@ export default async function Home() {
   // ne suffit plus à forcer le rendu dynamique — la page serait figée au
   // moment du build. connection() force une exécution à CHAQUE requête.
   await connection();
-  const [offres, derniereMaj] = await Promise.all([getOffres(), getDerniereMaj()]);
+  const [offres, derniereMaj] = await Promise.all([getOffresCartes(), getDerniereMaj()]);
   const villesNewsletter = Array.from(
     new Set((offres ?? []).map((o) => o.ville).filter((v): v is string => !!v))
   ).sort((a, b) => a.localeCompare(b, "fr"));
@@ -76,8 +76,8 @@ export default async function Home() {
         </div>
         <div className="border-t border-gray-100 px-4 py-6 text-center text-xs text-gray-400 sm:px-6 space-y-2">
           <p>
-            Offres collectées automatiquement (LinkedIn, Rekrute.com) — vérifiez toujours
-            les conditions auprès de l&apos;entreprise avant de postuler.
+            Offres collectées automatiquement (LinkedIn, Rekrute.com, Stagiaires.ma) —
+            vérifiez toujours les conditions auprès de l&apos;entreprise avant de postuler.
           </p>
           <p>
             Une idée pour améliorer le site, un problème ?{" "}
