@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { getDerniereMaj, getOffres, type Offre } from "@/lib/db";
 import OffresExplorer from "@/components/OffresExplorer";
 import NewsletterForm from "@/components/NewsletterForm";
+import MaillageInterne from "@/components/MaillageInterne";
 import { CapIcon, MailboxIcon } from "@/components/icons";
 
 // Liste simple, pas de JobPosting ici : Google recommande UN JobPosting sur
@@ -56,7 +57,10 @@ export default async function Home() {
           </main>
         </>
       ) : (
-        <OffresExplorer offres={offres} derniereMaj={derniereMaj} />
+        <>
+          <OffresExplorer offres={offres} derniereMaj={derniereMaj} />
+          <MaillageInterne />
+        </>
       )}
 
       <footer className="mt-auto border-t border-gray-200 bg-white">

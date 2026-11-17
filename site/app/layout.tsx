@@ -24,17 +24,19 @@ const geistMono = Geist_Mono({
 
 // Adresse publique : cf. lib/site-url.ts.
 
-const title = "Stages au Maroc — toutes les offres, tous domaines";
+const title = "Stages au Maroc — offres PFE 2026-2027, pré-embauche, été";
 const description =
-  "Veille automatisée des offres de stage au Maroc : PFE, pré-embauche, été, initiation, tous domaines confondus (informatique, ingénierie, finance, commerce, RH...). Mis à jour en continu, LinkedIn et Rekrute.com.";
+  "Veille automatisée des offres de stage au Maroc : PFE 2026-2027, pré-embauche, stages d'été et initiation. Toutes villes (Casablanca, Rabat, Tanger, Marrakech, Agadir, Fès) et tous domaines (informatique, data, ingénierie, finance, marketing, RH, audit). Mis à jour en continu depuis LinkedIn et Rekrute.com.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: title, template: "%s · Stages au Maroc" },
   description,
   keywords: [
-    "stage Maroc", "stage PFE Maroc", "offre de stage", "stagiaire Maroc",
-    "stage pré-embauche Maroc", "stage été Maroc", "emploi stage étudiant",
+    "stage Maroc", "stage PFE Maroc", "stage PFE 2027", "stage PFE 2026-2027",
+    "offre de stage", "stagiaire Maroc", "stage pré-embauche Maroc",
+    "stage été Maroc", "emploi stage étudiant",
+    "stage Casablanca", "stage Rabat", "stage Tanger", "stage Marrakech",
   ],
   openGraph: {
     title,
