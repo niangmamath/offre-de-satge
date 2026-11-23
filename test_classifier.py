@@ -374,7 +374,28 @@ class TestDedupAndSort(unittest.TestCase):
             source="Rekrute.com")
         out = C.dedup_annonces([linkedin, rekrute])
         self.assertEqual(len(out), 1)
-        self.assertEqual(out[0]["source"], "LinkedIn")  # 1re occurrence gagne
+        self.assertEqual(out[0]["source"], "LinkedIn")  # à date égale, 1re occurrence gagne
+
+    def test_dedup_variantes_entreprise_et_fh(self):
+        """Cas réels 11/2026 : même offre KPMG / Maroc Organic sur 2 sources."""
+        a = _annonce(poste="Stagiaire PFE – People Strategy & Transformation (F/H)",
+                     entite="KPMG au Maroc", url="https://stagiaires.ma/1", date_pub="2026-10-31")
+        b = _annonce(poste="Stagiaire PFE – People Strategy & Transformation |F/H",
+                     entite="KPMG Maroc", url="https://linkedin.com/2", date_pub="2026-10-30")
+        c = _annonce(poste="Stage PFE – Marketing Digital (Casablanca)",
+                     entite="MAROC ORGANIC ®", url="https://linkedin.com/3")
+        d = _annonce(poste="Stage PFE – Marketing Digital ( Casablanca)",
+                     entite="Maroc organic", url="https://stagiaires.ma/4")
+        out = C.dedup_annonces([a, b, c, d])
+        self.assertEqual(len(out), 2)
+
+    def test_dedup_garde_la_plus_recente(self):
+        vieux = _annonce(poste="Auditeur Financier Stagiaire PFE", entite="PwC",
+                         url="https://linkedin.com/old", date_pub="2026-10-13")
+        recent = _annonce(poste="Auditeur Financier Stagiaire PFE", entite="PwC Brasil",
+                          url="https://linkedin.com/new", date_pub="2026-11-16")
+        out = C.dedup_annonces([vieux, recent])
+        self.assertEqual([o["url"] for o in out], ["https://linkedin.com/new"])
 
     def test_pas_de_fusion_entre_entreprises_differentes(self):
         a1 = _annonce(poste="Stagiaire RH", entite="ACME")

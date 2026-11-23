@@ -19,7 +19,18 @@ export type Offre = {
   indemnite: string | null;
   premiere_detection: string;
   derniere_verification: string;
+  /** Description complète (page de détail uniquement, cf. getOffreBySlug). */
+  texte?: string | null;
 };
+
+/** Au-delà, une offre est très probablement pourvue/expirée : plus de
+ * balisage JobPosting, noindex et retrait du sitemap (Search Console 11/2026 :
+ * les pages périmées diluaient l'indexation des offres actives). */
+export const OFFRE_RECENTE_JOURS = 30;
+
+export function estRecente(o: Pick<Offre, "age_jours">): boolean {
+  return o.age_jours !== null && o.age_jours <= OFFRE_RECENTE_JOURS;
+}
 
 export type OffreAdmin = Offre & { masque: boolean; manuel: boolean };
 
@@ -71,11 +82,30 @@ export async function getOffreBySlug(slug: string): Promise<Offre | null> {
   const { rows } = await pool.query<Offre>(
     `SELECT url, slug, poste, entite, ville, description, domaine, type_stage,
             duree, source, date_pub_iso, age_jours, fenetre, candidats,
-            indemnite, premiere_detection, derniere_verification
+            indemnite, premiere_detection, derniere_verification, texte
      FROM offres WHERE slug = $1 AND masque = FALSE LIMIT 1`,
     [slug]
   );
   return rows[0] ?? null;
+}
+
+export type OffreSimilaire = Pick<Offre, "slug" | "poste" | "entite" | "ville" | "date_pub_iso">;
+
+/** Offres récentes du même domaine ou de la même ville (même domaine ET même
+ * ville d'abord) : contenu propre au site + maillage interne entre pages
+ * d'offres, pour qu'elles ne soient plus des pages isolées et maigres. */
+export async function getOffresSimilaires(offre: Offre, limite = 6): Promise<OffreSimilaire[]> {
+  const pool = getPool();
+  if (!pool || (!offre.domaine && !offre.ville)) return [];
+  const { rows } = await pool.query<OffreSimilaire>(
+    `SELECT slug, poste, entite, ville, date_pub_iso FROM offres
+     WHERE masque = FALSE AND slug <> $1 AND age_jours <= $4
+       AND (domaine = $2 OR ville = $3)
+     ORDER BY (domaine = $2 AND ville = $3) DESC, date_pub_iso DESC NULLS LAST
+     LIMIT $5`,
+    [offre.slug, offre.domaine, offre.ville, OFFRE_RECENTE_JOURS, limite]
+  );
+  return rows;
 }
 
 export async function getDerniereMaj(): Promise<string | null> {

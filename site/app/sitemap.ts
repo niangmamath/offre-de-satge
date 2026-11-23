@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { connection } from "next/server";
-import { getOffres } from "@/lib/db";
+import { getOffres, estRecente } from "@/lib/db";
 import {
   getVillesAvecCompte,
   getDomainesAvecCompte,
@@ -48,7 +48,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.6,
     })),
-    ...offres.map((o) => ({
+    // Offres de 30 jours ou moins seulement : les plus anciennes sont en
+    // noindex (cf. app/offre/[slug]/page.tsx) et diluaient l'exploration.
+    ...offres.filter(estRecente).map((o) => ({
       url: `${siteUrl}/offre/${o.slug}`,
       lastModified: new Date(o.derniere_verification),
       changeFrequency: "daily" as const,

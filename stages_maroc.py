@@ -290,7 +290,9 @@ def fetch_detail(jid):
     soup = BeautifulSoup(txt, "lxml")
     node = (soup.select_one("div.show-more-less-html__markup")
             or soup.select_one("div.description__text"))
-    desc = node.get_text(" ", strip=True) if node else ""
+    # "\n" entre éléments (paragraphes, puces) : le texte complet est affiché
+    # sur la page d'offre du site, aplati sur une ligne il était illisible.
+    desc = node.get_text("\n", strip=True) if node else ""
     crit = {}
     for li in soup.select("ul.description__job-criteria-list li"):
         lab = li.select_one("h3")

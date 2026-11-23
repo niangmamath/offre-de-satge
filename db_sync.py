@@ -53,18 +53,24 @@ MIGRATIONS_SQL = [
     # puisqu'elle ne sera par définition jamais dans le lot re-scrapé).
     "ALTER TABLE offres ADD COLUMN IF NOT EXISTS masque BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE offres ADD COLUMN IF NOT EXISTS manuel BOOLEAN NOT NULL DEFAULT FALSE",
+    # Description complète affichée sur la page d'offre ("description" n'en
+    # garde que la 1re phrase, pour les cartes) : avec ~80 caractères de
+    # texte, Google classait les pages "Explorée, actuellement non indexée".
+    "ALTER TABLE offres ADD COLUMN IF NOT EXISTS texte TEXT",
 ]
+
+TEXTE_MAX = 3000
 
 UPSERT_SQL = """
 INSERT INTO offres (
     url, poste, entite, ville, description, domaine, type_stage, duree,
     source, date_pub_iso, age_jours, fenetre, candidats, slug, indemnite,
-    premiere_detection, derniere_verification
+    texte, premiere_detection, derniere_verification
 ) VALUES (
     %(url)s, %(poste)s, %(entite)s, %(ville)s, %(description)s, %(domaine)s,
     %(type_stage)s, %(duree)s, %(source)s, %(date_pub_iso)s, %(age_jours)s,
     %(fenetre)s, %(candidats)s, %(slug)s, %(indemnite)s,
-    %(premiere_detection)s, %(derniere_verification)s
+    %(texte)s, %(premiere_detection)s, %(derniere_verification)s
 )
 ON CONFLICT (url) DO UPDATE SET
     poste = EXCLUDED.poste, entite = EXCLUDED.entite, ville = EXCLUDED.ville,
@@ -73,6 +79,7 @@ ON CONFLICT (url) DO UPDATE SET
     source = EXCLUDED.source, date_pub_iso = EXCLUDED.date_pub_iso,
     age_jours = EXCLUDED.age_jours, fenetre = EXCLUDED.fenetre,
     candidats = EXCLUDED.candidats, indemnite = EXCLUDED.indemnite,
+    texte = EXCLUDED.texte,
     derniere_verification = EXCLUDED.derniere_verification
     -- premiere_detection ET slug volontairement absents de la clause
     -- UPDATE : premiere_detection ne doit jamais être réécrit après
@@ -114,12 +121,23 @@ def _row(a):
         "candidats": a.get("nb_candidats_int"),
         "slug": _slug(a["url"], a.get("poste", "")),
         "indemnite": a.get("indemnite") or "",
+        "texte": _texte(a.get("texte")),
         # Les dates d'affichage (dd/mm/YYYY HH:MM, cf. process()) sont
         # reparsées en datetime pour la colonne TIMESTAMPTZ ; à défaut on
         # retombe sur "maintenant" plutôt que de planter tout le run.
         "premiere_detection": _parse_disp(prem),
         "derniere_verification": _parse_disp(deriv),
     }
+
+
+def _texte(t):
+    """Description complète nettoyée (espaces/lignes vides en série réduits),
+    plafonnée à TEXTE_MAX caractères en coupant sur une fin de mot."""
+    t = re.sub(r"[ \t]+", " ", (t or "").replace("\r", "")).strip()
+    t = re.sub(r"\n\s*\n+", "\n\n", t)
+    if len(t) > TEXTE_MAX:
+        t = t[:TEXTE_MAX].rsplit(" ", 1)[0] + "…"
+    return t or None
 
 
 def _parse_disp(s):

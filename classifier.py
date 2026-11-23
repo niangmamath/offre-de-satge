@@ -48,15 +48,39 @@ def normalize_title(title):
     t = re.sub(r"\b(stagiaire|stage|junior|debutant|confirme|confirmee|"
                r"de|d|le|la|les|un|une|en|pour|the|and)\b", " ", t)
     t = re.sub(r"[^a-z0-9]+", " ", t)
+    # "|F/H", "- M/F"... : la règle h/f ci-dessus ne couvre pas l'ordre
+    # inverse ni les séparateurs collés (cas réel KPMG 11/2026 : 3 pages).
+    t = re.sub(r"\b(?:h f|f h|m f|f m)\b", " ", t)
     return re.sub(r"\s+", " ", t).strip()
+
+
+# Mots retirés du nom d'entreprise pour comparer entre sources : la même
+# offre arrive en "KPMG au Maroc" (Stagiaires.ma) et "KPMG Maroc" (LinkedIn),
+# "MAROC ORGANIC ®" / "Maroc organic", "PwC Brasil" / "PwC" (11/2026).
+_ENTITE_BRUIT = {
+    "au", "du", "de", "le", "la", "the", "maroc", "morocco", "marocaine",
+    "brasil", "brazil", "france", "africa", "afrique", "mena", "emea",
+    "sa", "sarl", "sas", "sarlau", "ltd", "llc", "inc", "group", "groupe",
+}
+
+
+def normalize_entite(entite):
+    t = strip_accents(entite or "").lower()
+    mots = [m for m in re.sub(r"[^a-z0-9]+", " ", t).split() if m not in _ENTITE_BRUIT]
+    # Nom fait uniquement de mots "bruit" (ex. "Groupe Maroc") : garder le
+    # nom complet plutôt qu'une clé vide qui fusionnerait tout.
+    return " ".join(mots) or re.sub(r"[^a-z0-9]+", " ", t).strip()
 
 
 def dedup_annonces(annonces):
     """Retire les doublons — même entreprise + même titre normalisé, y
     compris ENTRE deux sources différentes (une offre postée à la fois sur
     LinkedIn et Rekrute.com/Stagiaires.ma ne doit apparaître qu'une fois).
-    Conserve la première occurrence rencontrée (LinkedIn en premier dans
-    l'ordre de collecte habituel, cf. stages_maroc.harvest()).
+    Garde la publication la plus RÉCENTE du groupe (une offre republiée
+    reste fraîche) ; à date égale, la première rencontrée (LinkedIn en
+    premier dans l'ordre de collecte, cf. stages_maroc.harvest()). Les
+    doublons disparaissent de la base et du site (pages quasi identiques
+    = "Explorée, actuellement non indexée" côté Google).
 
     Best-effort, comme le _dedup_key de sourcing-regie-banque : ne compare
     QUE entreprise + titre, pas le texte (qui diffère presque toujours
@@ -64,14 +88,15 @@ def dedup_annonces(annonces):
     inter-source ne fonctionnerait jamais). Deux offres réellement
     différentes chez la même entreprise avec un titre très proche
     pourraient fusionner à tort ; accepté comme compromis."""
-    seen, out = set(), []
+    gardes = {}  # clé -> index dans out
+    out = []
     for a in annonces:
-        key = (strip_accents(a.get("entite", "")).lower().strip(),
-               normalize_title(a.get("poste", "")))
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(a)
+        key = (normalize_entite(a.get("entite", "")), normalize_title(a.get("poste", "")))
+        if key not in gardes:
+            gardes[key] = len(out)
+            out.append(a)
+        elif (a.get("date_pub") or "") > (out[gardes[key]].get("date_pub") or ""):
+            out[gardes[key]] = a
     return out
 
 

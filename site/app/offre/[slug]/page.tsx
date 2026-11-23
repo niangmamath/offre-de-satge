@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getOffreBySlug } from "@/lib/db";
+import { getOffreBySlug, getOffresSimilaires, estRecente, OFFRE_RECENTE_JOURS } from "@/lib/db";
+import { slugifyLibre } from "@/lib/slug";
 import ShareButton from "@/components/ShareButton";
 import { ChatIcon, CoinIcon } from "@/components/icons";
 import FavoriButton from "@/components/FavoriButton";
@@ -42,30 +43,32 @@ export async function generateMetadata(props: PageProps<"/offre/[slug]">): Promi
   if (!offre) return { title: "Offre introuvable" };
 
   const title = `${offre.poste} — ${offre.entite || "Stage"}`;
-  const description =
-    offre.description ||
-    `Offre de stage : ${offre.poste} chez ${offre.entite || "une entreprise"} à ${offre.ville || "Maroc"}.`;
+  const source = (offre.texte || offre.description || "").replace(/\s+/g, " ").trim();
+  const description = source
+    ? source.length > 155
+      ? `${source.slice(0, 155).replace(/\s\S*$/, "")}…`
+      : source
+    : `Offre de stage : ${offre.poste} chez ${offre.entite || "une entreprise"} à ${offre.ville || "Maroc"}.`;
 
   return {
     title,
     description,
     alternates: { canonical: `/offre/${offre.slug}` },
+    // Offre périmée : la page reste consultable mais n'est plus proposée à
+    // Google (les pages expirées diluaient l'indexation des offres actives).
+    ...(estRecente(offre) ? {} : { robots: { index: false, follow: true } }),
     openGraph: { title, description, type: "article" },
     twitter: { card: "summary", title, description },
   };
 }
 
-// Au-delà, l'offre est très probablement pourvue/expirée : on ne la déclare
-// plus à Google Jobs (qui pénalise les offres expirées encore balisées).
-const VALIDITE_JOURS = 30;
-
 function JobPostingJsonLd({ offre }: { offre: NonNullable<Awaited<ReturnType<typeof getOffreBySlug>>> }) {
-  if (!offre.date_pub_iso || offre.age_jours === null || offre.age_jours > VALIDITE_JOURS) {
+  if (!offre.date_pub_iso || !estRecente(offre)) {
     return null;
   }
   // Pas de date d'expiration dans les sources : estimation publication + 30 j.
   const fin = new Date(`${offre.date_pub_iso}T23:59:59Z`);
-  fin.setUTCDate(fin.getUTCDate() + VALIDITE_JOURS);
+  fin.setUTCDate(fin.getUTCDate() + OFFRE_RECENTE_JOURS);
 
   const villeConnue = offre.ville && !offre.ville.startsWith("Maroc") ? offre.ville : null;
   const geo = infoVille(villeConnue);
@@ -75,7 +78,7 @@ function JobPostingJsonLd({ offre }: { offre: NonNullable<Awaited<ReturnType<typ
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: offre.poste,
-    description: offre.description || offre.poste,
+    description: offre.texte || offre.description || offre.poste,
     datePosted: offre.date_pub_iso,
     validThrough: fin.toISOString(),
     employmentType: "INTERN",
@@ -111,6 +114,8 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
   if (!offre) notFound();
 
   const style = FENETRE_STYLE[offre.fenetre] ?? FENETRE_STYLE.INCONNUE;
+  const similaires = await getOffresSimilaires(offre);
+  const villeLien = offre.ville && !offre.ville.startsWith("Maroc") ? offre.ville : null;
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50">
@@ -166,10 +171,15 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
             ) : null}
           </div>
 
-          {offre.description ? (
-            <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-gray-700">
-              {offre.description}
-            </p>
+          {offre.texte || offre.description ? (
+            <section className="mt-6">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Description de l&apos;offre
+              </h2>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-700">
+                {offre.texte || offre.description}
+              </p>
+            </section>
           ) : null}
 
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-gray-100 pt-4 text-xs text-gray-400">
@@ -201,6 +211,41 @@ export default async function OffreDetailPage(props: PageProps<"/offre/[slug]">)
             Vous quittez Stages au Maroc — la candidature se fait sur le site de l&apos;annonceur ({offre.source}).
           </p>
         </div>
+
+        {similaires.length > 0 ? (
+          <section className="mt-8">
+            <h2 className="text-lg font-bold text-gray-900">Offres similaires</h2>
+            <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {similaires.map((s) => (
+                <li key={s.slug}>
+                  <Link
+                    href={`/offre/${s.slug}`}
+                    className="block rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+                  >
+                    <span className="block text-sm font-semibold text-gray-900">{s.poste}</span>
+                    <span className="mt-1 block text-xs text-gray-500">
+                      {s.entite || "Entreprise non précisée"}
+                      {s.ville ? ` · ${s.ville}` : ""}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        <p className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {offre.domaine ? (
+            <Link href={`/domaine/${slugifyLibre(offre.domaine)}`} className="text-indigo-600 hover:underline">
+              Tous les stages {offre.domaine} →
+            </Link>
+          ) : null}
+          {villeLien ? (
+            <Link href={`/stages/${slugifyLibre(villeLien)}`} className="text-indigo-600 hover:underline">
+              Tous les stages à {villeLien} →
+            </Link>
+          ) : null}
+        </p>
       </main>
     </div>
   );

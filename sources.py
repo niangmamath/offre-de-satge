@@ -234,7 +234,8 @@ def _stagiaires_parse_detail(url, html):
         return None
 
     desc_html = data.get("description", "") or ""
-    texte = BeautifulSoup(desc_html, "lxml").get_text(" ", strip=True)
+    # "\n" : paragraphes conservés pour l'affichage sur la page d'offre.
+    texte = BeautifulSoup(desc_html, "lxml").get_text("\n", strip=True)
 
     entite = (data.get("hiringOrganization") or {}).get("name", "")
     adresse = (data.get("jobLocation") or {}).get("address") or {}
